@@ -44,48 +44,41 @@ import pendulum
 from airflow import DAG
 from cloudera.cdp.airflow.operators.cde_operator import CDEJobRunOperator
 from cloudera.cdp.airflow.operators.cdw_operator import CDWOperator
-from airflow.operators.bash import BashOperator
-import configparser
 
-config = configparser.ConfigParser()
-config.read('/app/mount/parameters.conf')
-username=config.get("general","username")
-
-print("Running as Username: ", username)
-
-dag_name = '{}-bonus-01-airflow-dag'.format(username)
+username = "username"
+dag_name = "{}-bonus-airflow-cdw-dag".format(username)
 
 default_args = {
-        'owner': 'pauldefusco',
-        'retry_delay': timedelta(seconds=5),
-        'depends_on_past': False,
-        'start_date': pendulum.datetime(2020, 1, 1, tz="Europe/Amsterdam")
-        }
+    "owner": "pauldefusco",
+    "retry_delay": timedelta(seconds=5),
+    "depends_on_past": False,
+    "start_date": pendulum.datetime(2020, 1, 1, tz="Europe/Amsterdam")
+}
 
 airflow_cdw_dag = DAG(
-        dag_name,
-        default_args=default_args,
-        schedule_interval='@daily',
-        catchup=False,
-        is_paused_upon_creation=False
-        )
+    dag_name,
+    default_args=default_args,
+    schedule_interval="@daily",
+    catchup=False,
+    is_paused_upon_creation=False
+)
 
 spark_step = CDEJobRunOperator(
-        task_id='sql_job',
-        dag=airflow_cdw_dag,
-        job_name='sql_job' #Must match name of CDE Spark Job in the CDE Jobs UI
-        )
+    task_id="sql_job",
+    dag=airflow_cdw_dag,
+    job_name="sql_job" #Must match name of CDE Spark Job in the CDE Jobs UI
+)
 
 cdw_query = """
 show databases;
 """
 
 dw_step = CDWOperator(
-    task_id='dataset-etl-cdw',
+    task_id="dataset-etl-cdw",
     dag=airflow_cdw_dag,
-    cli_conn_id='cdw_connection',
+    cli_conn_id="cdw_connection",
     hql=cdw_query,
-    schema='default',
+    schema="default",
     use_proxy_user=False,
     query_isolation=True
 )

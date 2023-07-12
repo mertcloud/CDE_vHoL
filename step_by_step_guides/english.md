@@ -16,10 +16,10 @@ Clone this GitHub repository to your local machine or the VM where you will be r
 ```
 mkdir ~/Documents/cde_ace_hol
 cd ~/Documents/cde_ace_hol
-git clone https://github.com/pdefusco/CDE_Tour_ACE_HOL.git
+git clone https://github.com/cloudera-cemea/CDE_vHoL.git
 ```
 
-Alternatively, if you don't have `git` installed on your machine, create a folder on your local computer; navigate to [this URL](https://github.com/pdefusco/CDE_Tour_ACE_HOL.git) and manually download the files.
+Alternatively, if you don't have `git` installed on your machine, create a folder on your local computer; navigate to [this URL](https://github.com/cloudera-cemea/CDE_vHoL.git) and manually download the files.
 
 ## Introduction to the CDE Data Service
 
@@ -193,7 +193,7 @@ Navigate back to the CDE Home Page. Click on "Create New" in the "Jobs" -> "Spar
 
 ![alt text](../img/cde_jobs_1.png)
 
-Select your CDE Virtual Cluster and assign "O1_Setup" as the Job Name.
+Select your CDE Virtual Cluster and assign "01_Setup" as the Job Name.
 
 ![alt text](../img/cde_jobs_2.png)
 
@@ -380,7 +380,7 @@ Finally, reupload the script to your CDE Files Resource. Create a new CDE Job of
 >The SimpleHttpOperator Operator can be used to interact with 3rd party systems and exchange data to and from a CDE Airflow Job run. For example you could trigger the execution of jobs outside CDP or execute CDE Airflow DAG logic based on inputs from 3rd party systems.
 
 >**Note**  
->You can use CDE Airflow to orchestrate SQL queries in CDW, the Cloudera Data Warehouse Data Service, with the Cloudera-supported  CDWOperator. If you want to learn more, please go to [Bonus Lab 1: Using CDE Airflow with CDW](https://github.com/pdefusco/CDE_Tour_ACE_HOL/blob/main/step_by_step_guides/english.md#bonus-lab-1-using-cde-airflow-with-cdw).
+>You can use CDE Airflow to orchestrate SQL queries in CDW, the Cloudera Data Warehouse Data Service, with the Cloudera-supported  CDWOperator. If you want to learn more, please go to [Bonus Lab 1: Using CDE Airflow with CDW](https://github.com/cloudera-cemea/CDE_vHoL/blob/main/step_by_step_guides/english.md#bonus-lab-1-using-cde-airflow-with-cdw).
 
 >**Note**  
 >Additionally, other operators including Python, HTTP, and Bash are available in CDE. If you want to learn more about Airflow in CDE, please reference [Using CDE Airflow](https://github.com/pdefusco/Using_CDE_Airflow).
@@ -437,7 +437,7 @@ python cde_cli_jobs/00_cde_cli_install.py JOBS_API_URL CDP_WORKLOAD_USER
 This command will run the script as a simple Spark Submit. This is slightly different from creating a CDE Job of type Spark as the Job definition will not become reusable.
 
 >**⚠ Warning**  
-> The CLI commands below are meant to be copy/pasted in your terminal as-is and run from the "cde_tour_ace_hol" directory. However, you may have to update the script path in each command if you're running these from a different folder.
+> The CLI commands below are meant to be copy/pasted in your terminal as-is and run from the directory where you cloned this reposiroty. However, you may have to update the script path in each command if you're running these from a different folder.
 
 ```
 cde spark submit --conf "spark.pyspark.python=python3" cde_cli_jobs/01_pyspark-sql.py
@@ -648,7 +648,7 @@ Click the plus sign to add a new record, and then fill in the fields:
 
 ##### Editing the DAG Python file
 
-Now you are ready to use the CDWOperator in your Airflow DAG. Open the "bonus-01_Airflow_CDW.py" script and familiarize yourself with the code.
+Now you are ready to use the CDWOperator in your Airflow DAG. Open the "Bonus-Airflow-CDW-DAG.py" script and familiarize yourself with the code.
 
 The Operator class is imported at line 47.
 
@@ -728,6 +728,6 @@ Execute the DAG and observe it from the CDE Job Runs UI.
 
 ### Conclusion
 
-Congratulations for making it to the end of this tutorial! We hope you enjoyed using CDE first hand. We recommend visiting the [Next Steps Section](https://github.com/pdefusco/CDE_Tour_ACE_HOL#next-steps) to continue your journey with CDE.
+Congratulations for making it to the end of this tutorial! We hope you enjoyed using CDE first hand. We recommend visiting the [Next Steps Section](https://github.com/cloudera-cemea/CDE_vHoL#next-steps) to continue your journey with CDE.
 
 ![alt text](../img/cde_thankyou.png)

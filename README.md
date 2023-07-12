@@ -15,7 +15,7 @@ This Hands On Lab is designed to walk you through the Services's main capabiliti
 
 ## Step by Step Instructions
 
-Detailed instructions in English are provided in the [step_by_step_guides](https://github.com/pdefusco/CDE_Tour_ACE_HOL/blob/main/step_by_step_guides/english.md) folder.
+Detailed instructions in English are provided in the [step_by_step_guides](https://github.com/cloudera-cemea/CDE_vHoL/blob/main/step_by_step_guides/english.md) folder.
 
 ## Next Steps
 
