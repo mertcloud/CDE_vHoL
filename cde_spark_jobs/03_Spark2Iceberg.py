@@ -49,8 +49,7 @@ import sys
 import configparser
 
 config = configparser.ConfigParser()
-config.read('/app/mount/parameters.conf')
-data_lake_name=config.get("general","data_lake_name")
+config.read("/app/mount/parameters.conf")
 s3BucketName=config.get("general","s3BucketName")
 username=config.get("general","username")
 
@@ -62,16 +61,15 @@ spark = SparkSession \
     .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkSessionCatalog")\
     .config("spark.sql.catalog.spark_catalog.type", "hive")\
     .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")\
-    .config("spark.yarn.access.hadoopFileSystems", data_lake_name)\
     .getOrCreate()
 
 print("TOP 20 ROWS IN CAR SALES TABLE")
 spark.sql("SELECT * FROM {}_CAR_DATA.car_sales".format(username)).show()
 
-#print("\n")
-#print("CAR SALES TABLE PRE-ICEBERG MIGRATION PARTITIONS: ")
-#print("SHOW PARTITIONS {}_CAR_DATA.CAR_SALES".format(username))
-#spark.sql("SHOW PARTITIONS {}_CAR_DATA.CAR_SALES".format(username)).show()
+print("\n")
+print("CAR SALES TABLE PRE-ICEBERG MIGRATION PARTITIONS: ")
+print("SHOW PARTITIONS {}_CAR_DATA.CAR_SALES".format(username))
+spark.sql("SHOW PARTITIONS {}_CAR_DATA.CAR_SALES".format(username)).show()
 
 #----------------------------------------------------
 #               MIGRATE SPARK TABLES TO ICEBERG TABLE
@@ -82,7 +80,8 @@ try:
     print("CALL spark_catalog.system.migrate('{}_CAR_DATA.CAR_SALES')".format(username))
     spark.sql("CALL spark_catalog.system.migrate('{}_CAR_DATA.CAR_SALES')".format(username))
     print("Migrated the Car Sales Table to Iceberg Format.")
-except:
+except Exception as e:
+    print(e)
     print("The Car Sales table has already been migrated to Iceberg Format.")
 
 try:
@@ -91,16 +90,13 @@ try:
     print("CALL spark_catalog.system.migrate('{}_CAR_DATA.CUSTOMER_DATA')".format(username))
     spark.sql("CALL spark_catalog.system.migrate('{}_CAR_DATA.CUSTOMER_DATA')".format(username))
     print("Migrated the Customer Data table to Iceberg Format.")
-except:
+except Exception as e:
+    print(e)
     print("The Customer Data table has already been migrated to Iceberg.")
 
-#print("\n")
-#print("LIST POST-ICEBERG MIGRATION PARTITIONS: ")
-#print("SHOW PARTITIONS spark_catalog.{}_CAR_DATA.CAR_SALES".format(username))
-#spark.sql("SHOW PARTITIONS spark_catalog.{}_CAR_DATA.CAR_SALES".format(username)).show()
-#print("DESCRIBE TABLE spark_catalog.{}_CAR_DATA.CAR_SALES".format(username))
-#spark.sql("DESCRIBE TABLE spark_catalog.{}_CAR_DATA.CAR_SALES".format(username)).show()
-
+print("\n")
+print("DESCRIBE TABLE spark_catalog.{}_CAR_DATA.CAR_SALES".format(username))
+spark.sql("DESCRIBE TABLE spark_catalog.{}_CAR_DATA.CAR_SALES".format(username)).show(20, False)
 
 print("CAR SALES TABLE POST-ICEBERG MIGRATION PARTITIONS: ")
 spark.sql("SELECT * FROM spark_catalog.{}_CAR_DATA.CAR_SALES.PARTITIONS".format(username)).show()
@@ -109,11 +105,8 @@ spark.sql("SELECT * FROM spark_catalog.{}_CAR_DATA.CAR_SALES.PARTITIONS".format(
 #               SHOW ICEBERG TABLE SNAPSHOTS
 #---------------------------------------------------
 
-spark.read.format("iceberg").load("spark_catalog.{}_CAR_DATA.CAR_SALES.history".format(username)).show(20, False)
-spark.read.format("iceberg").load("spark_catalog.{}_CAR_DATA.CAR_SALES.snapshots".format(username)).show(20, False)
-
-#spark.sql("SELECT * FROM spark_catalog.{}_CAR_DATA.CAR_SALES.history".format(username)).show(20, False)
-#spark.sql("SELECT * FROM spark_catalog.{}_CAR_DATA.CAR_SALES.snapshots".format(username)).show(20, False)
+spark.sql("SELECT * FROM spark_catalog.{}_CAR_DATA.CAR_SALES.history".format(username)).show(20, False)
+spark.sql("SELECT * FROM spark_catalog.{}_CAR_DATA.CAR_SALES.snapshots".format(username)).show(20, False)
 
 # STORE TIMESTAMP BEFORE INSERTS
 now = datetime.now()
@@ -137,9 +130,12 @@ spark.sql("DROP TABLE IF EXISTS spark_catalog.{}_CAR_DATA.CAR_SALES_SAMPLE".form
 temp_df.writeTo("spark_catalog.{}_CAR_DATA.CAR_SALES_SAMPLE".format(username)).create()
 
 print("INSERT DATA VIA SPARK SQL")
-query_5 = """INSERT INTO spark_catalog.{0}_CAR_DATA.CAR_SALES SELECT * FROM spark_catalog.{0}_CAR_DATA.CAR_SALES_SAMPLE""".format(username)
-print(query_5)
-spark.sql(query_5)
+insert_qry = """
+INSERT INTO spark_catalog.{0}_CAR_DATA.CAR_SALES
+SELECT * FROM spark_catalog.{0}_CAR_DATA.CAR_SALES_SAMPLE
+""".format(username)
+print(insert_qry)
+spark.sql(insert_qry)
 
 #---------------------------------------------------
 #               TIME TRAVEL
@@ -182,10 +178,3 @@ spark.read\
     .option("start-snapshot-id", first_snapshot)\
     .option("end-snapshot-id", last_snapshot)\
     .load("spark_catalog.{}_CAR_DATA.CAR_SALES".format(username)).show()
-
-#---------------------------------------------------
-#               SAVE DATA TO PARQUET
-#---------------------------------------------------
-#from datetime import datetime
-#write_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-#temp_df.write.mode("overwrite").option("header", "true").parquet(s3BucketName+write_time+"/car_sales_data.parquet")

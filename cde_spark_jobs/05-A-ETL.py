@@ -44,8 +44,7 @@ import sys
 import configparser
 
 config = configparser.ConfigParser()
-config.read('/app/mount/parameters.conf')
-data_lake_name=config.get("general","data_lake_name")
+config.read("/app/mount/parameters.conf")
 s3BucketName=config.get("general","s3BucketName")
 username=config.get("general","username")
 
@@ -56,13 +55,12 @@ print("Running as Username: ", username)
 #---------------------------------------------------
 spark = SparkSession\
             .builder\
-            .appName('CAR INSTALLS ETL')\
-            .config("spark.yarn.access.hadoopFileSystems", data_lake_name)\
+            .appName("CAR INSTALLS ETL")\
             .getOrCreate()
 
 
-car_installs_df  = spark.sql("SELECT * FROM {}_CAR_DATA.car_installs".format(username))
-factory_data_df  = spark.sql("SELECT * FROM {}_CAR_DATA.experimental_motors".format(username))
+car_installs_df  = spark.sql("SELECT * FROM {}_CAR_DATA.CAR_INSTALLS".format(username))
+factory_data_df  = spark.sql("SELECT * FROM {}_CAR_DATA.EXPERIMENTAL_MOTORS".format(username))
 
 installs_report_df = car_installs_df.join(factory_data_df, "serial_no")
 
@@ -84,4 +82,4 @@ installs_etl_step2_df = installs_etl_step1_df\
 
 installs_etl_step2_df.show()
 
-installs_etl_step2_df.write.mode("overwrite").saveAsTable('{}_CAR_DATA.INSTALLS_ETL'.format(username), format="parquet")
+installs_etl_step2_df.write.mode("overwrite").saveAsTable("{}_CAR_DATA.INSTALLS_ETL".format(username), format="parquet")

@@ -43,8 +43,7 @@ import pyspark.sql.functions as F
 import configparser
 
 config = configparser.ConfigParser()
-config.read('/app/mount/parameters.conf')
-data_lake_name=config.get("general","data_lake_name")
+config.read("/app/mount/parameters.conf")
 s3BucketName=config.get("general","s3BucketName")
 username=config.get("general","username")
 
@@ -53,18 +52,21 @@ print("Running as Username: ", username)
 #---------------------------------------------------
 #               CREATE SPARK SESSION
 #---------------------------------------------------
-spark = SparkSession.builder.appName('ENRICH').config("spark.yarn.access.hadoopFileSystems", data_lake_name).getOrCreate()
+spark = SparkSession\
+        .builder\
+        .appName("ENRICH")\
+        .getOrCreate()
 _DEBUG_ = False
 
 #---------------------------------------------------
 #                READ SOURCE TABLES
 #---------------------------------------------------
 print("JOB STARTED...")
-car_sales     = spark.sql("SELECT * FROM {}_CAR_DATA.car_sales".format(username)) #could also checkpoint here but need to set checkpoint dir
-customer_data = spark.sql("SELECT * FROM {}_CAR_DATA.customer_data".format(username))
-car_installs  = spark.sql("SELECT * FROM {}_CAR_DATA.car_installs".format(username))
-factory_data  = spark.sql("SELECT * FROM {}_CAR_DATA.experimental_motors".format(username))
-geo_data      = spark.sql("SELECT postalcode as zip, latitude, longitude FROM {}_CAR_DATA.geo_data_xref".format(username))
+car_sales     = spark.sql("SELECT * FROM {}_CAR_DATA.CAR_SALES".format(username)) #could also checkpoint here but need to set checkpoint dir
+customer_data = spark.sql("SELECT * FROM {}_CAR_DATA.CUSTOMER_DATA".format(username))
+car_installs  = spark.sql("SELECT * FROM {}_CAR_DATA.CAR_INSTALLS".format(username))
+factory_data  = spark.sql("SELECT * FROM {}_CAR_DATA.EXPERIMENTAL_MOTORS".format(username))
+geo_data      = spark.sql("SELECT postalcode as zip, latitude, longitude FROM {}_CAR_DATA.GEO_DATA_XREF".format(username))
 print("\tREAD TABLE(S) COMPLETED")
 
 #---------------------------------------------------
@@ -72,7 +74,7 @@ print("\tREAD TABLE(S) COMPLETED")
 # - Remove under aged drivers (less than 16 yrs old)
 #---------------------------------------------------
 before = customer_data.count()
-customer_data = customer_data.filter(col('birthdate') <= F.add_months(F.current_date(),-192))
+customer_data = customer_data.filter(col("birthdate") <= F.add_months(F.current_date(),-192))
 after = customer_data.count()
 print(f"\tFILTER DATA (CUSTOMER_DATA): Before({before}), After ({after}), Difference ({after - before}) rows")
 
@@ -80,9 +82,11 @@ print(f"\tFILTER DATA (CUSTOMER_DATA): Before({before}), After ({after}), Differ
 #             JOIN DATA INTO ONE TABLE
 #---------------------------------------------------
 # SQL way to do things
-salesandcustomers_sql = "SELECT customers.*, sales.saleprice, sales.model, sales.VIN \
-                            FROM {0}_CAR_DATA.car_sales sales JOIN {0}_CAR_DATA.customer_data customers \
-                             ON sales.customer_id = customers.customer_id ".format(username)
+salesandcustomers_sql = """
+SELECT customers.*, sales.saleprice, sales.model, sales.VIN
+FROM {0}_CAR_DATA.car_sales sales JOIN {0}_CAR_DATA.customer_data customers
+ON sales.customer_id = customers.customer_id
+""".format(username)
 
 tempTable = spark.sql(salesandcustomers_sql)
 if (_DEBUG_):
@@ -120,7 +124,7 @@ if (_DEBUG_):
 #---------------------------------------------------
 #             CREATE NEW HIVE TABLE
 #---------------------------------------------------
-tempTable.write.mode("overwrite").saveAsTable('{}_CAR_DATA.experimental_motors_enriched'.format(username), format="parquet")
+tempTable.write.mode("overwrite").saveAsTable("{}_CAR_DATA.EXPERIMENTAL_MOTORS_ENRICHED".format(username), format="parquet")
 print("\tNEW ENRICHED TABLE CREATED: {}_CAR_DATA.EXPERIMENTAL_MOTORS_ENRICHED".format(username))
 tempTable.show(n=5)
 

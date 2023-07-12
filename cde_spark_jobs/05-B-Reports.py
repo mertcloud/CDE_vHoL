@@ -44,8 +44,7 @@ import sys
 import configparser
 
 config = configparser.ConfigParser()
-config.read('/app/mount/parameters.conf')
-data_lake_name=config.get("general","data_lake_name")
+config.read("/app/mount/parameters.conf")
 s3BucketName=config.get("general","s3BucketName")
 username=config.get("general","username")
 
@@ -56,8 +55,7 @@ print("Running as Username: ", username)
 #---------------------------------------------------
 spark = SparkSession\
             .builder\
-            .appName('CAR INSTALLS REPORT')\
-            .config("spark.yarn.access.hadoopFileSystems", data_lake_name)\
+            .appName("CAR INSTALLS REPORT")\
             .getOrCreate()
 
 installs_etl_step2_df = spark.sql("SELECT * FROM {}_CAR_DATA.INSTALLS_ETL".format(username))
@@ -67,6 +65,6 @@ installs_etl_step3_df = installs_etl_step2_df.drop("timestamp").groupBy("weekofy
 installs_etl_step3_df.show()
 
 print("Report: Weekly Cumulative of Parts Installed")
-installs_etl_step4_df = installs_etl_step3_df.withColumn('count_percent',F.col('count')/F.sum('count').over(Window.partitionBy())*100)
-installs_etl_step5_df = installs_etl_step4_df.withColumn('cum_percent', F.sum(installs_etl_step4_df.count_percent).over(Window.partitionBy().orderBy().rowsBetween(-sys.maxsize, 0)))
+installs_etl_step4_df = installs_etl_step3_df.withColumn("count_percent",F.col("count")/F.sum("count").over(Window.partitionBy())*100)
+installs_etl_step5_df = installs_etl_step4_df.withColumn("cum_percent", F.sum(installs_etl_step4_df.count_percent).over(Window.partitionBy().orderBy().rowsBetween(-sys.maxsize, 0)))
 installs_etl_step5_df.show()

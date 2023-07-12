@@ -45,50 +45,47 @@ from cloudera.cdp.airflow.operators.cde_operator import CDEJobRunOperator
 from airflow.operators.bash import BashOperator
 from airflow.operators.python_operator import PythonOperator
 
-username = "pdefusco_020723"
-
-print("Running as Username: ", username)
-
-cde_job_name_05_A = "user05_ace_020723" #Replace with CDE Job Name for Script 5 A
-cde_job_name_05_B = "user05B_ace_020723"  #Replace with CDE Job Name for Script 5 B
+username = "username"
+cde_job_name_05_A = "05-A-ETL"
+cde_job_name_05_B = "05-B-REPORTS"
 
 #DAG instantiation
 default_args = {
-    'owner': "pauldefusco",
-    'retry_delay': timedelta(seconds=10),
-    'depends_on_past': False,
-    'start_date': datetime(2022,11,22,8), #Start Date must be in the past
-    'end_date': datetime(2023,9,30,8) #End Date must be in the future
+    "owner": username,
+    "retry_delay": timedelta(seconds=10),
+    "depends_on_past": False,
+    "start_date": datetime(2022,11,22,8), #Start Date must be in the past
+    "end_date": datetime(2023,9,30,8) #End Date must be in the future
 }
 
-dag_name = '{}-05-airflow-pipeline_1'.format(username)
+dag_name = "{}-05-airflow-basic-dag".format(username)
 
 intro_dag = DAG(
     dag_name,
     default_args=default_args,
-    schedule_interval='@yearly',
+    schedule_interval="@yearly",
     catchup=False,
     is_paused_upon_creation=False
 )
 
 #Using the CDEJobRunOperator
 step1 = CDEJobRunOperator(
-  task_id='etl',
-  dag=intro_dag,
-  job_name=cde_job_name_05_A #job_name needs to match the name assigned to the Spark CDE Job in the CDE UI
+    task_id="etl",
+    dag=intro_dag,
+    job_name=cde_job_name_05_A #job_name needs to match the name assigned to the Spark CDE Job in the CDE UI
 )
 
 step2 = CDEJobRunOperator(
-    task_id='report',
+    task_id="report",
     dag=intro_dag,
     job_name=cde_job_name_05_B #job_name needs to match the name assigned to the Spark CDE Job in the CDE UI
 )
 
 step3 = BashOperator(
-        task_id='bash',
-        dag=intro_dag,
-        bash_command='echo "Hello Airflow" '
-        )
+    task_id="bash",
+    dag=intro_dag,
+    bash_command='echo "Hello Airflow"'
+)
 
 step4 = BashOperator(
     task_id='bash_with_jinja',

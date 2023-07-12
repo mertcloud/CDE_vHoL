@@ -47,54 +47,51 @@ from dateutil import parser
 from airflow import DAG
 import pendulum
 
-username = "pdefusco_020723"
-
-print("Running as Username: ", username)
-
-cde_job_name_07_A = '07_A_pyspark_LEFT'
-cde_job_name_07_B = '07_B_pyspark_RIGHT'
-cde_job_name_07_C = '07_C_pyspark_JOIN'
+username = "username"
+cde_job_name_07_A = "07-A-pyspark-LEFT"
+cde_job_name_07_B = "07-B-pyspark-RIGHT"
+cde_job_name_07_C = "07-C-pyspark-JOIN"
 
 default_args = {
-        'owner': username,
-        'retry_delay': timedelta(seconds=5),
-        'depends_on_past': False,
-        'start_date': pendulum.datetime(2020, 1, 1, tz="Europe/Amsterdam")
-        }
+    "owner": username,
+    "retry_delay": timedelta(seconds=5),
+    "depends_on_past": False,
+    "start_date": pendulum.datetime(2020, 1, 1, tz="Europe/Amsterdam")
+}
 
-dag_name = '{}-07-airflow-logic-dag'.format(username)
+dag_name = "{}-07-airflow-logic-dag".format(username)
 
 airflow_tour_dag = DAG(
-        dag_name,
-        default_args=default_args,
-        schedule_interval='@daily',
-        catchup=False,
-        is_paused_upon_creation=False
-        )
+    dag_name,
+    default_args=default_args,
+    schedule_interval="@daily",
+    catchup=False,
+    is_paused_upon_creation=False
+)
 
 start = DummyOperator(
-                task_id="start",
-                dag=airflow_tour_dag)
+    task_id="start",
+    dag=airflow_tour_dag
+)
 
 spark_sql_left_step1 = CDEJobRunOperator(
-        task_id='create-left-table',
-        dag=airflow_tour_dag,
-        job_name=cde_job_name_07_A
-        )
+    task_id="create-left-table",
+    dag=airflow_tour_dag,
+    job_name=cde_job_name_07_A
+)
 
 spark_sql_right_step2 = CDEJobRunOperator(
-        task_id='create-right-table',
-        dag=airflow_tour_dag,
-        job_name=cde_job_name_07_B
-        )
+    task_id="create-right-table",
+    dag=airflow_tour_dag,
+    job_name=cde_job_name_07_B
+)
 
 spark_sql_join_step3 = CDEJobRunOperator(
-        task_id='join-tables',
-        dag=airflow_tour_dag,
-        job_name=cde_job_name_07_C
-        )
+    task_id="join-tables",
+    dag=airflow_tour_dag,
+    job_name=cde_job_name_07_C
+)
 
-#api_host = Variable.get("ran")
 def handle_response(response):
     if response.status_code == 200:
         print("Received 200 Ok")
@@ -115,7 +112,7 @@ apicall_step4 = SimpleHttpOperator(
 )
 
 def _print_random_joke(**context):
-    return context['ti'].xcom_pull(task_ids='random_joke_api')
+    return context["ti"].xcom_pull(task_ids="random_joke_api")
 
 apiresponse_step5 = PythonOperator(
     task_id="print_random_joke",

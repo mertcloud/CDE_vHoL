@@ -54,9 +54,9 @@ def test_column_presence(spark_df, col_list):
 
     try:
         print(quinn.validate_presence_of_columns(spark_df, col_list))
-        print("All Test Columns Found")
+        print(f"Verified dataframe has columns: {col_list}")
     except:
-        print("One or More Columns From List Not Found")
+        print(f"Missing one or more columns from list: {col_list}")
 
 
 def test_null_presence_in_col(spark_df, col):
@@ -64,12 +64,13 @@ def test_null_presence_in_col(spark_df, col):
 
     try:
         df = spark_df.withColumn("is_blank_or_null", F.col(col).isNullOrBlank())
-        print("Dataframe enriched with test")
+        print(f"Dataframe enriched with blanks or nulls in column: {col}")
     except:
         print("Error During Test")
 
     return df
-'''
+
+
 def test_values_not_in_col(spark_df, value_list, col):
     print("Testing for exclusion of values: ")
     print(" ".join(value_list))
@@ -77,9 +78,8 @@ def test_values_not_in_col(spark_df, value_list, col):
 
     try:
         df = spark_df.withColumn("is_not_in_val_list", F.col(col).isNotIn(value_list))
-        print("Dataframe enriched with test")
+        print(f"Dataframe enriched with values not in list: {value_list}")
     except:
         print("Error During Test")
 
     return df
-'''

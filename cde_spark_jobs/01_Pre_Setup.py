@@ -43,8 +43,7 @@ import pyspark.sql.functions as F
 import configparser
 
 config = configparser.ConfigParser()
-config.read('/app/mount/parameters.conf')
-data_lake_name=config.get("general","data_lake_name")
+config.read("/app/mount/parameters.conf")
 s3BucketName=config.get("general","s3BucketName")
 username=config.get("general","username")
 
@@ -53,7 +52,10 @@ print("Running as Username: ", username)
 #---------------------------------------------------
 #               CREATE SPARK SESSION
 #---------------------------------------------------
-spark = SparkSession.builder.appName('INGEST').config("spark.yarn.access.hadoopFileSystems", data_lake_name).getOrCreate()
+spark = SparkSession\
+        .builder\
+        .appName("INGEST")\
+        .getOrCreate()
 
 #-----------------------------------------------------------------------------------
 # LOAD DATA FROM .CSV FILES ON AWS S3 CLOUD STORAGE
@@ -62,15 +64,15 @@ spark = SparkSession.builder.appName('INGEST').config("spark.yarn.access.hadoopF
 #              using storage.location.base attribute; defined by your environment.
 #
 #              For example, property storage.location.base
-#                           has value 's3a://usermarketing-cdp-demo'
+#                           has value "s3a://usermarketing-cdp-demo"
 #                           Therefore, set variable as:
 #                                 s3BucketName = "s3a://usermarketing-cdp-demo"
 #-----------------------------------------------------------------------------------
-car_installs  = spark.read.csv(s3BucketName + "/car_installs.csv",        header=True, inferSchema=True)
-car_sales     = spark.read.csv(s3BucketName + "/historical_car_sales.csv",           header=True, inferSchema=True)
-customer_data = spark.read.csv(s3BucketName + "/customer_data.csv",       header=True, inferSchema=True)
-factory_data  = spark.read.csv(s3BucketName + "/experimental_motors.csv", header=True, inferSchema=True)
-geo_data      = spark.read.csv(s3BucketName + "/postal_codes.csv",        header=True, inferSchema=True)
+car_installs  = spark.read.csv(s3BucketName + "/car_installs.csv",          header=True, inferSchema=True)
+car_sales     = spark.read.csv(s3BucketName + "/historical_car_sales.csv",  header=True, inferSchema=True)
+customer_data = spark.read.csv(s3BucketName + "/customer_data.csv",         header=True, inferSchema=True)
+factory_data  = spark.read.csv(s3BucketName + "/experimental_motors.csv",   header=True, inferSchema=True)
+geo_data      = spark.read.csv(s3BucketName + "/postal_codes.csv",          header=True, inferSchema=True)
 
 #---------------------------------------------------
 #       SQL CLEANUP: DATABASES, TABLES, VIEWS
@@ -90,11 +92,11 @@ print("\tCREATE DATABASE(S) COMPLETED")
 #---------------------------------------------------
 
 #NB: The car sales table is partitioned by month
-car_sales.write.mode("overwrite").partitionBy("month").saveAsTable('{}_CAR_DATA.CAR_SALES'.format(username), format="parquet")
-car_installs.write.mode("overwrite").saveAsTable('{}_CAR_DATA.CAR_INSTALLS'.format(username), format="parquet")
-factory_data.write.mode("overwrite").saveAsTable('{}_CAR_DATA.EXPERIMENTAL_MOTORS'.format(username), format="parquet")
-customer_data.write.mode("overwrite").saveAsTable('{}_CAR_DATA.CUSTOMER_DATA'.format(username), format="parquet")
-geo_data.write.mode("overwrite").saveAsTable('{}_CAR_DATA.GEO_DATA_XREF'.format(username), format="parquet")
+car_sales.write.mode("overwrite").partitionBy("month").saveAsTable("{}_CAR_DATA.CAR_SALES".format(username), format="parquet")
+car_installs.write.mode("overwrite").saveAsTable("{}_CAR_DATA.CAR_INSTALLS".format(username), format="parquet")
+factory_data.write.mode("overwrite").saveAsTable("{}_CAR_DATA.EXPERIMENTAL_MOTORS".format(username), format="parquet")
+customer_data.write.mode("overwrite").saveAsTable("{}_CAR_DATA.CUSTOMER_DATA".format(username), format="parquet")
+geo_data.write.mode("overwrite").saveAsTable("{}_CAR_DATA.GEO_DATA_XREF".format(username), format="parquet")
 print("\tPOPULATE TABLE(S) COMPLETED")
 
 print("JOB COMPLETED.\n\n")

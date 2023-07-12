@@ -44,8 +44,7 @@ import sys
 import configparser
 
 config = configparser.ConfigParser()
-config.read('/app/mount/parameters.conf')
-data_lake_name=config.get("general","data_lake_name")
+config.read("/app/mount/parameters.conf")
 s3BucketName=config.get("general","s3BucketName")
 username=config.get("general","username")
 
@@ -53,8 +52,7 @@ print("Running as Username: ", username)
 
 spark = SparkSession \
     .builder \
-    .appName("PySpark SQL") \
-    .config("spark.yarn.access.hadoopFileSystems", data_lake_name)\
+    .appName("PYSPARK-SQL-RIGHT") \
     .getOrCreate()
 
 # A list of Rows. Infer schema from the first row, create a DataFrame and print the schema
@@ -63,8 +61,10 @@ right_df = spark.createDataFrame(rows)
 right_df.printSchema()
 
 try:
-    right_df.write.mode("overwrite").saveAsTable('{}_CAR_DATA.RIGHT_TABLE'.format(username), format="parquet")
-except:
+    spark.sql("CREATE DATABASE IF NOT EXISTS {}_CAR_DATA".format(username))
+    right_df.write.mode("overwrite").saveAsTable("{}_CAR_DATA.RIGHT_TABLE".format(username), format="parquet")
+except Exception as e:
+    print(e)
     pass
 
 spark.stop()
