@@ -37,31 +37,68 @@
 # #  Author(s): Paul de Fusco, Maximilian Engelhardt
 #***************************************************************************/
 
-from pyspark.sql import SparkSession
-from pyspark.sql.types import Row, StructField, StructType, StringType, IntegerType
+# Airflow DAG
+from airflow.operators.dummy_operator import DummyOperator
+from airflow.operators.python_operator import PythonOperator
+from airflow.operators.http_operator import SimpleHttpOperator
+from datetime import timedelta
+from airflow import DAG
+import pendulum
 
-spark = SparkSession\
-    .builder\
-    .appName("PythonSQL")\
-    .getOrCreate()
+username = "user123"
 
-# A list of Rows. Infer schema from the first row, create a DataFrame and print the schema
-rows = [Row(name="John", age=19), Row(name="Smith", age=23), Row(name="Sarah", age=18)]
-some_df = spark.createDataFrame(rows)
-some_df.printSchema()
+default_args = {
+    "owner": username,
+    "retry_delay": timedelta(seconds=5),
+    "depends_on_past": False,
+    "start_date": pendulum.datetime(2020, 1, 1, tz="Europe/Amsterdam")
+}
 
-# A list of tuples
-tuples = [("John", 19), ("Smith", 23), ("Sarah", 18)]
+dag_name = f"{username}-07-airflow-code-dag"
 
-# Schema with two fields - person_name and person_age
-schema = StructType([StructField("person_name", StringType(), False),
-                    StructField("person_age", IntegerType(), False)])
+airflow_tour_dag = DAG(
+    dag_name,
+    default_args=default_args,
+    schedule_interval="@daily",
+    catchup=False,
+    is_paused_upon_creation=False
+)
 
-# Create a DataFrame by applying the schema to the RDD and print the schema
-another_df = spark.createDataFrame(tuples, schema)
-another_df.printSchema()
+start = DummyOperator(
+    task_id="start",
+    dag=airflow_tour_dag
+)
 
-for each in another_df.collect():
-    print(each[0])
+api_call_1 = SimpleHttpOperator(
+    task_id="random_joke_api_1",
+    method="GET",
+    http_conn_id=f"{username}_random_joke_connection",
+    endpoint="/jokes/programming/random",
+    headers={"Content-Type":"application/json"},
+    response_check=lambda response: True if response.status_code == 200 else False,
+    dag=airflow_tour_dag,
+    do_xcom_push=True
+)
 
-spark.stop()
+api_call_2 = SimpleHttpOperator(
+    task_id="random_joke_api_2",
+    method="GET",
+    http_conn_id=f"{username}_random_joke_connection",
+    endpoint="/jokes/programming/random",
+    headers={"Content-Type":"application/json"},
+    response_check=lambda response: True if response.status_code == 200 else False,
+    dag=airflow_tour_dag,
+    do_xcom_push=True
+)
+
+def _print_random_joke(**context):
+    return context["ti"].xcom_pull(task_ids=["random_joke_api_1", "random_joke_api_2"])
+
+api_response = PythonOperator(
+    task_id="print_random_joke",
+    python_callable=_print_random_joke,
+    dag=airflow_tour_dag
+)
+
+# note that api_response only executed after successful api_call tasks
+start >> [api_call_1, api_call_2] >> api_response

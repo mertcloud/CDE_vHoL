@@ -34,26 +34,24 @@
 #  BUSINESS ADVANTAGE OR UNAVAILABILITY, OR LOSS OR CORRUPTION OF
 #  DATA.
 #
-# #  Author(s): Paul de Fusco
+# #  Author(s): Paul de Fusco, Maximilian Engelhardt
 #***************************************************************************/
 
 #---------------------------------------------------
 #               DATA QUALITY TESTS WITH QUINN LIB
 #---------------------------------------------------
 
-from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.types import *
 from quinn.extensions import *
 import quinn
-import sys
 
 
 def test_column_presence(spark_df, col_list):
     print("Testing for existence of Columns: ", [i for i in col_list])
 
     try:
-        print(quinn.validate_presence_of_columns(spark_df, col_list))
+        quinn.validate_presence_of_columns(spark_df, col_list)
         print(f"Verified dataframe has columns: {col_list}")
     except:
         print(f"Missing one or more columns from list: {col_list}")
