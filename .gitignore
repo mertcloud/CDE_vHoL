@@ -159,8 +159,17 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+# Bash hist
+*.bash_history
+
 # VSCode
 .vscode*
 
 # cde binary
 cde
+
+# pyenv
+.python-version
+
+# mac
+*.DS_Store
