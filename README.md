@@ -1,16 +1,8 @@
 # Cloudera Data Engineering Hands-on Lab CEMEA
 
-#TODO table of contents
-
-## Glossary
-
-For an overview of terminology specific to CDE (e.g. Virtual Cluster, Interactive Sessions, etc.) please refer to the [glossary](GLOSSARY.md).
-
 ## Cloudera Data Engineering
 
 Cloudera Data Engineering (CDE) is a managed, containerized Platform-as-a-Service for the Cloudera Data Platform designed for managing large-scale data pipelines based around Spark, Airflow and Iceberg. It allows you to submit batch jobs to auto-scaling virtual clusters with built-in multi-tenancy support. As a serverless service, CDE enables you to spend more time on your applications, and less time on infrastructure.
-
-## Use Case Scenario
 
 This hands-on lab is designed to walk you through the CDE's main capabilities. Throughout the exercises, you will:
 
@@ -19,6 +11,12 @@ This hands-on lab is designed to walk you through the CDE's main capabilities. T
 3. [**Orchestrate** Data Pipelines in Airflow](#lab-3-orchestrate-data-pipelines-in-airflow)
 4. [**Automate** Workflows with the CDE CLI](#lab-4-automate-workflows-with-the-cde-cli)
 5. [**Visualize** the Results in Cloudera DataViz](#lab-5-visualize-the-results-in-cloudera-dataviz)
+
+### Glossary
+
+For an overview of terminology specific to CDE (e.g. Virtual Cluster, Interactive Sessions, etc.) please refer to the [glossary](GLOSSARY.md).
+
+## Use Case Scenario
 
 <img src="img/readme/use_case_0.svg" alt="image" width="800"/>
 
@@ -217,7 +215,9 @@ You may have noticed in the Overview section that the "validate.py" script utili
 3. Solution: It turns out our sales table contains duplicates for the "customer_id" and "VIN" fields. That's not good, as each customer should only be able to buy a single car once!
 
 ```
+...
 AssertionError: VALIDATION FOR SALES TABLE UNSUCCESSFUL: FOUND DUPLICATES IN [customer_id, VIN].
+...
 ```
 
 **Infobox: Monitoring CDE Spark Jobs**
@@ -255,14 +255,98 @@ print(username)
 
 ### Verify the Data Quality Issues
 
-```python
+With your Interactive Session running, you will now confirm the data quality issues in the sales table.
 
+> **Infobox: Time Travel with Iceberg**
+> * Recall the sales data is ingested in two batches, one for 2021, one for 2022.
+> * Iceberg creates a new snapshot with every write operation (inserts, updates, deletes).
+> * Note we're using the syntax `catalog.database.table.snapshots` to access the table history.
+
+1. Verify the duplicates by comparing total counts to distinct counts for the fields "customer_id" and "VIN".
+
+```python
+sales_df = spark.sql(f"SELECT * FROM car_data_{username}.sales")
+count_total = sales_df.count()
+count_distinct = sales_df.select("customer_id", "VIN").distinct().count()
+print(f"Total count: {count_total} vs. unique [customer_id, VIN] count: {count_distinct}.")
+```
+
+2. Check the table history by inspecting the Iceberg snapshots. You should see two snapshots in the sales table.
+
+```python
+spark.sql(f"SELECT * FROM spark_catalog.car_data_{username}.sales.snapshots").show()
+```
+
+Expected output:
+```
++--------------------+-------------------+-------------------+---------+--------------------+--------------------+
+|        committed_at|        snapshot_id|          parent_id|operation|       manifest_list|             summary|
++--------------------+-------------------+-------------------+---------+--------------------+--------------------+
+|2023-12-09 00:01:...|7356121065394951566|               null|   append|s3a://cde-hol-buk...|{spark.app.id -> ...|
+|2023-12-09 00:01:...| 362831684775421239|7356121065394951566|   append|s3a://cde-hol-buk...|{spark.app.id -> ...|
++--------------------+-------------------+-------------------+---------+--------------------+--------------------+
+```
+
+3. Check if the duplicates were introduced by a specific batch. It turns out that the second batch insert introduced the duplicates.
+
+```python
+snapshot_ids = spark.sql(f"SELECT snapshot_id FROM spark_catalog.car_data_{username}.sales.snapshots").collect()
+for snapshot_id in snapshot_ids:
+    sales_df = spark.read.format("iceberg").option("snapshot-id", snapshot_id[0]).load(f"spark_catalog.car_data_{username}.sales")
+    count_total = sales_df.count()
+    count_distinct = sales_df.select("customer_id", "VIN").distinct().count()
+    print(f"Snapshot {snapshot_id} total count: {count_total} vs. unique [customer_id, VIN] count: {count_distinct}")
+```
+
+Expected output:
+
+```
+Snapshot Row(snapshot_id=7356121065394951566) total count: 1874 vs. unique [customer_id, VIN] count: 1874
+Snapshot Row(snapshot_id=362831684775421239) total count: 6819 vs. unique [customer_id, VIN] count: 6667
 ```
 
 ### Revert the Table to an Uncorrupted State
 
-```python
+> **Note** <br>
+> For the remainder of the workshop, executing the below is optional and not required. You can ignore the duplicates for now, as we will re-run the full pipeline in the next section.
 
+Thanks to Iceberg there are new and safer options to address this issue, depending on the business needs.
+
+* **Option A**: If having access to the latest batch is not critical, you can revert the table to the state before the second batch insert. This is done in Iceberg using the Spark rollback procedure:
+
+```python
+first_snapshot = spark.sql(f"SELECT snapshot_id FROM spark_catalog.car_data_{username}.sales.snapshots").first()[0]
+spark.sql(f"CALL spark_catalog.system.rollback_to_snapshot('car_data_{username}.sales', {first_snapshot})").show()
+```
+
+Would result in:
+
+```
++--------------------+-------------------+
+|previous_snapshot_id|current_snapshot_id|
++--------------------+-------------------+
+|  362831684775421239|7356121065394951566|
++--------------------+-------------------+
+```
+
+* **Option B**: You can simply drop the duplicates using PySpark. Note that this will again create a new snapshot, so if this turns out to be the wrong approach you can always revert the table again.
+
+```python
+sales_df_cleaned = sales_df.dropDuplicates(["customer_id", "VIN"])
+sales_df_cleaned.createOrReplaceTempView("sales_df_cleaned")
+spark.sql(f"INSERT OVERWRITE car_data_{username}.sales SELECT * FROM sales_df_cleaned")
+```
+
+Would result in a new snapshot. Note the **overwrite** snapshot as a result of the INSERT OVERWRITE statement:
+
+```
++--------------------+-------------------+-------------------+---------+--------------------+--------------------+
+|        committed_at|        snapshot_id|          parent_id|operation|       manifest_list|             summary|
++--------------------+-------------------+-------------------+---------+--------------------+--------------------+
+|2023-12-09 10:42:...|2653522877398178198|               null|   append|s3a://cde-hol-buk...|{spark.app.id -> ...|
+|2023-12-09 10:42:...|2162976375477413462|2653522877398178198|   append|s3a://cde-hol-buk...|{spark.app.id -> ...|
+|2023-12-09 11:23:...|1434134148231443461|2162976375477413462|overwrite|s3a://cde-hol-buk...|{spark.app.id -> ...|
++--------------------+-------------------+-------------------+---------+--------------------+--------------------+
 ```
 
 ## Lab 3. Orchestrate Data Pipelines in Airflow
@@ -280,9 +364,16 @@ You will also learn about:
 
 You can use the CDE Airflow Editor to build DAGs without writing code. This is a great option if your DAG consists of a long sequence of CDE Spark or CDW Hive jobs. In this section you will build a simple pipeline to orchestrate the CDE Spark Jobs you created before.
 
-1. create from home
-2. visual editor 3 jobs
-3. schedule and configs (daily, start yesterday, end future)
+1. Create your Airflow Job from the home page, and name it e.g. "pipeline"
+2. Using the Visual Editor, chain together the 3 CDE Spark Jobs "create", "ingest" and "validate".
+3. Within the Visual Editor, configure the Airflow Job with the following:
+
+```
+start_date: yesterday's date, e.g. 2023-12-11
+end_date: some date in the future, e.g. 2023-12-31
+schedule: @daily
+catch_up: true
+```
 
 ### Navigate through the Airflow UI to Monitor your Pipeline
 
@@ -358,23 +449,41 @@ ORDER BY s.sales_price
 
 You've seen how to manage both Spark and Airflow Jobs using the CDE UI, what's left to do? Leverage the CDE CLI to automate your workflows, e.g. to enable CI/CD.
 
-### Set up the CDE CLI using Docker (recommended)
+### Configure and run the CDE CLI using Docker (recommended)
 
-1. pull the docker image
-2. set your workload password
-3. retrieve your virtual cluster jobs api
-4. adjust the cde cli configs
+0. Create a Workload Password for your CDP User.
 
-### Alternatively: Set up the CDE CLI manually (not recommended)
+<img src="img/readme/cde_cli_0.png" alt="image" width="600"/><br>
+<img src="img/readme/cde_cli_1.png" alt="image" width="600"/><br>
 
-If you do not have Docker installed, you may download and set up the CDE CLI binary directly by following the instructions provided in the [official documentation](https://docs.cloudera.com/data-engineering/cloud/cli-access/topics/cde-cli.html). Note that the configuration steps may differ slightly from the Docker setup based on your environment.
-
-### Execute a Spark job via the CDE CLI
-
-#TODO set up a simple spark job for this
+1. Update the file "cde_cli/config/creds.txt" with your Workload password.
 
 ```
-$ ./cde
+<workload-password>
+```
+
+2. Retrieve your Virtual Jobs API URL.
+
+<img src="img/readme/cde_cli_2.png" alt="image" width="600"/><br>
+
+3. Update the file "cde_cli/config/env.cfg" with your Virtual Cluster JOBS API and your username.
+
+```
+CDE_USER=<username>
+CDE_VCLUSTER_ENDPOINT=<jobs-api-url>
+CDE_AUTH_PASS_FILE=/home/cdeuser/config/creds.txt
+```
+
+3. Run the CDE CLI without further setup. Note that the "cde_cli/config" directory is mounted from your host into the container.
+
+```bash
+bash ./cde_cli/run.sh
+```
+
+Should give you a bash terminal in the CDE CLI container.
+
+```
+cdeuser@8c2b6432370d:~$ cde
 
 Usage:
   cde [command]
@@ -392,7 +501,30 @@ Available Commands:
   spark       Spark commands
 
 ...
+
 ```
+
+### Alternatively: Set up the CDE CLI manually (not recommended)
+
+If you do not have Docker installed, you may download and set up the CDE CLI binary directly by following the instructions provided in the [official documentation](https://docs.cloudera.com/data-engineering/cloud/cli-access/topics/cde-cli.html). Note that the configuration steps may differ slightly from the Docker setup based on your environment.
+
+### Execute your Airflow Job from the CDE CLI
+
+1. Run the Airflow Job from the CLI. Note that this will trigger the entire pipeline to run again. The response will be the Run ID for the Job Run.
+
+```bash
+cdeuser@4b2fb5fe2cc5:~$ cde job run --name mydag
+
+{
+  "id": 32
+}
+```
+
+2. Verify from the CDE and Airflow UIs that the pipeline is running as expected.
+
+> **Infobox: Leveraging the CDE CLI**
+> * The CDE CLI allows you to manage the full life cycle of your applications on CDE.
+> * For some examples, please refer to the [CDE CLI Demo](https://github.com/pdefusco/CDE_CLI_demo), a more advanced CDE CLI reference with additional details for the CDE user who wants to move beyond the basics.
 
 ## Lab 5. Visualize the Results in Cloudera DataViz
 
@@ -400,7 +532,7 @@ Available Commands:
 
 - CDV deployed on CDW
 - CDV data models overview
-- upload existing artifact to CDV
+- upload the existing artifact to CDV
 
 # Next Steps
 

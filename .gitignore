@@ -173,3 +173,6 @@ cde
 
 # mac
 *.DS_Store
+
+# cde creds/configs
+cde_cli/config/*
