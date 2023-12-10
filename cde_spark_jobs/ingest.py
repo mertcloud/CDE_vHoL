@@ -22,7 +22,7 @@ for YEAR in ["2021", "2022"]:
     sales_df.createOrReplaceTempView(f"sales_{YEAR}")
     spark.sql(f"""
         INSERT INTO car_data_{USERNAME}.sales
-        SELECT customer_id, model, sales_price, to_timestamp(sales_ts), vin
+        SELECT customer_id, model, sales_price, to_date(sales_date), vin
         FROM sales_{YEAR}
     """)
 

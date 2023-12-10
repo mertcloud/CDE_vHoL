@@ -23,7 +23,7 @@ CREATE TABLE car_data_{USERNAME}.sales(
     customer_id int,
     model string,
     sales_price double,
-    sales_ts date,
+    sales_date date,
     vin string )
 USING ICEBERG TBLPROPERTIES ('format-version' = '2')
 """)
