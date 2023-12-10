@@ -8,3 +8,4 @@ RUN chmod +x cde
 
 USER cdeuser
 RUN echo 'alias cde=~/cde' >> ~/.bashrc
+RUN mkdir .cde
