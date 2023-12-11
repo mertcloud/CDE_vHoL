@@ -526,80 +526,92 @@ cdeuser@4b2fb5fe2cc5:~$ cde job run --name mydag
 > * The CDE CLI allows you to manage the full life cycle of your applications on CDE.
 > * For some examples, please refer to the [CDE CLI Demo](https://github.com/pdefusco/CDE_CLI_demo), a more advanced CDE CLI reference with additional details for the CDE user who wants to move beyond the basics.
 
-## Lab 5. Visualize the Results in Cloudera DataViz
+## Lab 5. Visualize the Results in Cloudera DataViz (CDV)
 
 ### Overview
 
 Cloudera Data Warehouse (CDW) Data Service is a containerized application for creating highly performant, independent, self-service data warehouses in the cloud which can be scaled dynamically and upgraded independently. Learn more about the service architecture, and how CDW enables data practitioners and IT administrators to achieve their goals.
 
-In this lab we are going to take a look on the deployed CDW Virtual Warehouse and open DataViz and Import a visual artifct. CDV is a powerful containerized Data Exploration and Visualization tool and we will explore the capabilities of the Cloudera DataViz. 
+In this lab, we are going to take a look at the deployed CDW Virtual Warehouse, open DataViz and import a pre-built dashboard. Cloudera DataViz (CDV) is a powerful containerized Data Exploration and Visualization tool and we will explore some of the main capabilities.
 
-### CDW 
+### Explore the Cloudera Data Warehouse (CDW) Data Service
 
 1. Go back to the Control Plane and select CDW
-<img src="img/readme/cdw_1.png" alt="image" width="600"/><br>
 
-2. On the CDW main Page observe the main Overview pane, you can see the deployed CDW Virtual Warehouses, you can see the Impala warehouse running with the actual load and the *HUE* application link to the specific warehouse. 
+<img src="img/readme/cdw_1.png" alt="image" width="800"/><br>
 
-<img src="img/readme/cdw_2.png" alt="image" width="600"/><br>
+2. On the CDW main Page observe the main Overview pane, you can see the deployed CDW Virtual Warehouses, you can see the Impala warehouse running with the actual load and the *Hue* application link to the specific warehouse. 
 
-On the left pane, you can select from the followings: 
+<img src="img/readme/cdw_2.png" alt="image" width="800"/><br>
+
+On the left pane, you can select from the following: 
 - Database Catalogs: A Database Catalog is automatically created when you activate an environment in Cloudera Data Warehouse (CDW). You can add additional Database Catalogs if you want a standalone data warehouse that is not shared with other authorized users of the environment.
-- Virtual Warehouses: A Virtual Warehouse provides access to the data in tables and views in the data lake your Database Catalog uses. A Virtual Warehouse can access only the Database Catalog you select during creation of the Virtual Warehouse.Define different types of Virtual Warehouses, you can choose Impala or Hive and select the scaling pattern, types of used resources.
-- Data Visualization: Acces the DataViz application instances running in containers. 
+- Virtual Warehouses: A Virtual Warehouse provides access to the data in tables and views in the data lake your Database Catalog uses. A Virtual Warehouse can access only the Database Catalog you select during the creation of the Virtual Warehouse. Define different types of Virtual Warehouses, you can choose Impala or Hive and select the scaling pattern and types of used resources.
+- Data Visualization: Access the DataViz application instances running in containers. 
 
-When you will run queries with DataViz or HUE or any other application through connectors, your Virtual Warehouse will scale according to the query. 
+Whenever you run queries, e.g. via DataViz, Hue or any other application connecting to CDW via JDBC/ODBC, your Virtual Warehouse will scale according to the query and concurrency load.
 
-3. Look for you user and open the corresponding DataViz. 
-<img src="img/readme/cdw_3.png" alt="image" width="600"/><br>
+3. Look for your user and open the corresponding DataViz.
 
-### DataViz - CDV
+<img src="img/readme/cdw_3.png" alt="image" width="800"/><br>
 
-In this lab we are going to create a connection to the Impala Virtual Warehouse, and import a DataViz visual artifact and create our own visualization with the previously used and prepared datasets. 
+### Build your First Visualization in DataViz
+
+In this part, you are going to create a connection to the Impala Virtual Warehouse and import a pre-built dashboard as DataViz visual artifact. You are then able to additionally create your own visualizations with the previously used and prepared datasets. 
 
 1. This is the main page of the CDV, you can see an overall number of queries, connections, dataset, dashboard and many more information. 
-<img src="img/readme/dataviz_1.png" alt="image" width="600"/><br>
+
+<img src="img/readme/dataviz_1.png" alt="image" width="800"/><br>
 
 2. Now let's create a connection to the Impala Virtual Warehouse, click on the *Data* on the bar, and select *NEW CONNECTION* on the left pane. 
-<img src="img/readme/dataviz_2.png" alt="image" width="600"/><br>
 
-3. On this tab you have to specify the requested connection information:
+<img src="img/readme/dataviz_2.png" alt="image" width="500"/><br>
+
+3. In this window, you have to specify the requested connection information to connect to the CDW Impala Virtual Warehouse.
 
 ```json
 Connection type: CDW Impala
 Connection name: vhol
 CDW Warehouse: cde-hol-impala-vw
 ```
-First select *Test* and if successful select *Connect*. 
-<img src="img/readme/dataviz_3.png" alt="image" width="600"/><br>
 
-Now you have created connection to the Virtual Warehouse and DataViz will use the underlying warehouse to run the queries for the data visualization. 
+4. First, select *Test* and if successful select *Connect*. 
 
-4. Now we will import the visual artifact, which also sets up the references to our table which we would like to query. 
-on the *Data* tab click on the three dots and select *import visual artifacts*. 
+<img src="img/readme/dataviz_3.png" alt="image" width="500"/><br>
+
+5. Now you have created a connection to the Virtual Warehouse and DataViz will use the underlying warehouse to run the queries for the data visualization. 
+
+6. Now we will import the visual artifact, which also sets up the references to our table which we would like to query. On the *Data* tab click on the three dots and select *Import visual artifacts*. 
+
 <img src="img/readme/dataviz_4.png" alt="image" width="600"/><br>
 
-Select the sales_dashboard.json to upload from the resource_files and select *Import*. 
-<img src="img/readme/dataviz_5.png" alt="image" width="600"/><br>
+7. Select the sales_dashboard.json to upload from the resource_files and select *Import*. 
 
-On the next page you will see the objects and visuals that will be imported, just select *Accept and Import*. 
+<img src="img/readme/dataviz_5.png" alt="image" width="500"/><br>
+
+8. On the next page you will see the objects and visuals that will be imported, just select *Accept and Import*. 
+
 <img src="img/readme/dataviz_6.png" alt="image" width="600"/><br>
 
-5. Let's open the imported visualization, go back to the main DataViz main page and select the 2022 Sales Dashboard and observe it! 
-<img src="img/readme/dataviz_7.png" alt="image" width="600"/><br>
+9. Let's open the imported visualization and go back to the DataViz main page. select the 2022 Sales Dashboard and observe it!
+
+<img src="img/readme/dataviz_7.png" alt="image" width="700"/><br>
 
 #### Create Your Own Visualization
 
-1. Click on *Edit* on the left top section of the opened 2022 Sales Dahsboard Window
-<img src="img/readme/dataviz_8.png" alt="image" width="600"/><br>
+1. Click on *Edit* on the left top section of the opened 2022 Sales Dashboard Window
 
-2. You will see that when you would like to add a new visual, DataViz asks you which Connection to use and what dataset you would liek to use, in our case pelase go with *vhol* as connection and *sales_customers* as dataset. 
-Then select *New Visual* 
-<img src="img/readme/dataviz_9.png" alt="image" width="600"/><br>
+<img src="img/readme/dataviz_8.png" alt="image" width="500"/><br>
 
-3. Now on the right side you will see the followings: 
-- Visuals: select the visualization type, the necessary settings will be update under the Visuals section. 
-- Dashboard Designer: you will see your availabe data as dimensions ot measures, to set them please drag them to the necessary Dimensions or Measures shelf. In case of aggregation, just click on the items already in the shelfes and the options will appear on the right side. 
+2. You will see that when you would like to add a new visual, DataViz asks you which Connection to use and what dataset you would like to use. In this case, select *vhol* as connection and *sales_customers* as the dataset. Then, click on *New Visual*.
+
+<img src="img/readme/dataviz_9.png" alt="image" width="500"/><br>
+
+3. Now on the right side, you will see the following:
+
+- Visuals: Select the visualization type. The necessary settings will show under the Visuals section. 
+- Dashboard Designer: You will see your available data as dimensions of measures, to set them please drag them to the necessary Dimensions or Measures shelf. In case of aggregation, just click on the items already on the shelves and the options will appear on the right side.
+
 <img src="img/readme/dataviz_10.png" alt="image" width="600"/><br>
 
 4. Now start to explore DataViz, create your first visualization! 
