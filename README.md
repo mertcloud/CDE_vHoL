@@ -112,7 +112,7 @@ sales_gdf.expect_compound_columns_to_be_unique(["customer_id", "VIN"])
 
 ### Create a File Resource for your Spark Jobs
 
-To get started, navigate to the CDE Service from the CDP home page by clicking on the blue "Data Engineering" icon. From the CDE home page, create a new File resource. CDE Resources can be of type "File", "Python", or "Custom Runtime". You will start by creating a resource of type "File" to get started with your first Spark Jobs.
+CDE Resources can be of type "File", "Python", or "Custom Runtime". You will start by creating a resource of type "File" to get started with your first Spark Jobs.
 
 1. First, navigate to the CDE Service from the CDP home page by clicking on the blue "Data Engineering" icon.
 2. To create a File Resource, from the CDE home page click on "Create New" in the "Resources" -> "File" section.
