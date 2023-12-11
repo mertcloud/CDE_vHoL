@@ -79,6 +79,8 @@ Iceberg is compatible with a variety of compute engines including Spark. CDE all
 
 For more information please visit the [documentation](https://iceberg.apache.org/spec).
 
+<img src="img/glossary/iceberg.png" alt="image" width="700"/><br>
+
 ##### CDE User Interface
 
 Now that you have covered the basics of CDE, spend a few moments familiarizing yourself with the CDE Landing page.
