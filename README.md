@@ -177,11 +177,11 @@ First, you will create the jobs for "create.py":
 
 <img src="img/readme/cde_jobs_1.png" alt="image" width="400"/><br>
 
-3. Scroll to the bottom and click on the "Create and Run" blue icon. The job will now be executed, which may take a few minutes.
+3. Scroll to the bottom and click on the "Create and Run" blue icon. The job will now be executed, which may take a minute.
 
-4. Repeat steps 1. through 3. for the "ingest" job.
+4. Confirm your "create" CDE Spark Job was created and executed successfully by browsing the "Job Runs" tab
 
-5. Confirm both CDE Spark Jobs were created and executed successfully by browsing the "Job Runs" tab
+5. Repeat steps 1. through 4. for the "ingest" job. Both Jobs should have finished successfully!
 
 <img src="img/readme/cde_jobs_2.png" alt="image" width="1000"/><br>
 
