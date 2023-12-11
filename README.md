@@ -141,7 +141,9 @@ resources_files
 
 ### Create a Python Resource for the Data Quality Job
 
-Notice how the job "validate.py" imports the grea_expectations library to utilize modules for data quality checks. For your PySpark Jobs to be able to make use of this dependency, you will create a new resource of type "Python Resource" in this section. This will build a Python Virtual Environment under the hood that any of your CDE Spark Jobs can utilize from there on.
+Notice how the job "validate.py" imports the great-expectations library to utilize modules for data quality checks. For your PySpark Jobs to be able to make use of this dependency, you will create a new resource of type "Python Resource" in this section. This will build a Python Virtual Environment under the hood that any of your CDE Spark Jobs can utilize from there on.
+
+For more informaton on great-expectations also check out the docs: https://docs.greatexpectations.io/docs
 
 1. Navigate back to the CDE home page and click on "Create New" in the "Resources" -> "Python" section.
 
@@ -539,7 +541,7 @@ cdeuser@4b2fb5fe2cc5:~$ cde job run --name mydag
 > * The CDE CLI allows you to manage the full life cycle of your applications on CDE.
 > * For some examples, please refer to the [CDE CLI Demo](https://github.com/pdefusco/CDE_CLI_demo), a more advanced CDE CLI reference with additional details for the CDE user who wants to move beyond the basics.
 
-## Lab 5. Visualize the Results in Cloudera DataViz (CDV)
+## Lab 5. Visualize the Results in Cloudera DataViz
 
 ### Overview
 
