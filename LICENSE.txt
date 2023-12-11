@@ -1,4 +1,4 @@
-(C) Cloudera, Inc. 2020-2022
+(C) Cloudera, Inc. 2020-2023
 All rights reserved.
 Applicable Open Source License: GNU Affero General Public License v3.0
 NOTE: Cloudera open source products are modular software products

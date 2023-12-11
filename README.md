@@ -1,539 +1,282 @@
-# CDE Hands-on-Lab CEMEA
+# Cloudera Data Engineering Hands-on Lab CEMEA
 
-- [CDE Hands-on-Lab CEMEA](#cde-hands-on-lab-cemea)
-  - [Objective](#objective)
-  - [Prerequisites](#prerequisites)
-- [Step by Step Instructions](#step-by-step-instructions)
-  - [Lab 0. Project Setup](#lab-0-project-setup)
-  - [Lab 1: Manage Spark Jobs with CDE](#lab-1-manage-spark-jobs-with-cde)
-  - [Lab 2: Orchestrate Data Pipelines with Airflow](#lab-2-orchestrate-data-pipelines-with-airflow)
-  - [Lab 3: Explore Iceberg in Interactive Sessions](#lab-3-explore-iceberg-in-interactive-sessions)
-  - [Lab 4: Automate CDE Workflows with the CDE CLI](#lab-4-automate-cde-workflows-with-the-cde-cli)
-  - [Bonus Lab 1: Visualize Job \& Data Lineage in Atlas](#bonus-lab-1-visualize-job--data-lineage-in-atlas)
-- [Next Steps](#next-steps)
+## Cloudera Data Engineering
 
-## Objective
+Cloudera Data Engineering (CDE) is a managed, containerized Platform-as-a-Service for the Cloudera Data Platform designed for managing large-scale data pipelines based around Spark, Airflow and Iceberg. It allows you to submit batch jobs to auto-scaling virtual clusters with built-in multi-tenancy support. As a serverless service, CDE enables you to spend more time on your applications, and less time on infrastructure.
 
-CDE is the Cloudera Data Engineering Service, a serverless containerized managed service for Cloudera Data Platform designed for Large Scale Batch Pipelines with Spark, Airflow and Iceberg. It allows you to submit batch jobs to auto-scaling virtual clusters. As a serverless service, CDE enables you to spend more time on your applications, and less time on infrastructure.
+This hands-on lab is designed to walk you through the CDE's main capabilities. Throughout the exercises, you will:
 
-CDE allows you to create, manage, and schedule Apache Spark jobs without the overhead of creating and maintaining Spark clusters. With CDE, you define virtual clusters with a range of CPU and memory resources, and the cluster scales up and down as needed to run your Spark workloads, helping to control your cloud costs.
+1. [**Deploy** Spark Jobs in the CDE UI](#lab-1-manage-spark-jobs-in-the-cde-ui)
+2. [**Validate** Data Quality with Iceberg](#lab-2-address-data-quality-with-iceberg)
+3. [**Orchestrate** Data Pipelines in Airflow](#lab-3-orchestrate-data-pipelines-in-airflow)
+4. [**Automate** Workflows with the CDE CLI](#lab-4-automate-workflows-with-the-cde-cli)
+5. [**Visualize** the Results in Cloudera DataViz](#lab-5-visualize-the-results-in-cloudera-dataviz)
 
-This Hands-on-Lab is designed to walk you through the Service's main capabilities. Throughout the exercises you will:
+### Glossary
 
-1. [Deploy, configure, execute and monitor Spark Jobs](#lab-1-manage-spark-jobs-with-cde).
-2. [Orchestrate pipelines with Airflow](#lab-2-orchestrate-data-pipelines-with-airflow).
-3. [Use Iceberg to address data quality issues in a CDE Interactive Session](#lab-3-explore-iceberg-in-interactive-sessions).
-4. [Use the CDE CLI to automate CDE workflows](#lab-4-automate-cde-workflows-with-the-cde-cli).
+For an overview of terminology specific to CDE (e.g. Virtual Cluster, Interactive Sessions, etc.) please refer to the [glossary](GLOSSARY.md).
 
-Throughout these labs, you are going to deploy an ELT (Extract, Load, Transform) data pipeline that extracts data stored on AWS S3 object storage, loads it into the Cloudera Data Lakehouse and transforms it for reporting purposes.
+## Use Case Scenario
 
-```mermaid
-graph LR
-    D1[/Raw Data Files/]
-    D2[(Cloudera Data Lakehouse)]
-    style D1 fill:#fff,stroke:#bbb
-    style D2 fill:#fff,stroke:#bbb
+<img src="img/readme/use_case_0.svg" alt="image" width="800"/>
 
-    subgraph Ingest
-    direction TB
-    A(01_Ingest)
-    A -. Extract .-> D1
-    A -. Load .-> D2
-    end    
+**Business Context:**
 
-    subgraph Transform
-    B(02_Sales_Transform_Iceberg)
-    B -- Data Quality Checks & Reporting --> C(03_Sales_Report)
-    B-- Join Transformed Tables --> D(04_Motors_Enrich)
-    end
+* You are a Data Engineer working for an electric vehicle startup.
+* You were tasked to build a reliable data pipeline for sales reporting.
+* You are to create a simple star schema with **sales** (facts) and **customers** (dimension).
 
-    Ingest -- Iceberg Conversion --> B
+**Requirements:**
+
+* You will use CDE to deploy and orchestrate data pipelines for loading and validating the data.
+* The source data is loaded in yearly batches from an S3 bucket.<br>
+* The **sales** (fact) table is to be **appended**.
+* The **customers** (dimension) table is to be **updated**.
+
+**Source data on S3:**
+
+```bash
+$ aws s3 ls s3://<source-bucket>/ --recursive --human-readable
+
+2023-12-05 14:50:37  431.9 KiB 2021/customers.csv
+2023-12-05 14:50:26  104.6 KiB 2021/sales.csv
+2023-12-05 14:51:11  170 Bytes 2022/customers.csv
+2023-12-05 14:50:55  276.0 KiB 2022/sales.csv
 ```
-
-The Sales_Report job will give us an aggregate overview of our sales by model and customer types:
-
-```
-GROUP TOTAL SALES BY MODEL
-+-------+--------------------+
-|  Model|total_sales_by_model|
-+-------+--------------------+
-|Model C|        136557721.36|
-|Model D|        162208438.10|
-|Model R|        201420946.00|
-+-------+--------------------+
-
-GROUP TOTAL SALES BY GENDER
-+------+---------------------+
-|Gender|total_sales_by_gender|
-+------+---------------------+
-|     F|         258522496.93|
-|     M|         241664608.53|
-+------+---------------------+
-````
-
-## Prerequisites
-
-Before you can run this Hands-on-Lab you need:
-* Familiarity with Python and PySpark is highly recommended.
-* A CDP environment with an enabled CDE service (Azure, AWS or Private Cloud).
-* A CDE Virtual Cluster with Spark 3 and Iceberg enabled. 
-* Sample data uploaded to the AWS S3 Bucket with read access from CDE.
-* [Bonus Lab 1](#...) requires a Hive CDW Virtual Warehouse. This lab is optional.
 
 # Step by Step Instructions
 
-## Lab 0. Project Setup
+## Lab 0. Setup
 
-Clone this GitHub repository to your local machine or the VM where you will be running the script.
+### Clone this repo to the machine you will be using for the workshop.
 
 ```
-mkdir <your-directory>
-cd <your-directory>
+mkdir cde-hol
+cd cde-hol
 git clone https://github.com/cloudera-cemea/CDE_vHoL.git
+cd CDE_vHoL
 ```
 
-Alternatively, if you don't have `git` installed on your machine, create a folder on your local computer; navigate to [this URL](https://github.com/cloudera-cemea/CDE_vHoL.git) and manually download the files.
+Alternatively, if you don't have git installed on your machine, you can also manually download the files from https://github.com/cloudera-cemea/CDE_vHoL.
 
-#### 0.1 Edit the parameters.conf
+### Update the username in the parameters.conf file
 
-Before you start the labs, open the [parameters.conf](./resources_files/parameters.conf) file in the "resource_files" directory and edit both fields with your assigned username and the AWS S3 Bucket provided by your Cloudera Workshop Lead. If you are reproducing these labs on your own you will also have to ensure that these values reflect the Cloud Storage path where you loaded the data.
+Before you start the labs, open the "parameters.conf" file in the "resources_files" folder and edit the username as assigned by your Cloudera Workshop Lead.
 
 ```
 [general]
-s3BucketName: s3a://cdp-data-lake/workshop-bucket   <-- replace this with the bucket provided to you
-username: user123                                   <-- replace this with the username assigned to you
+s3BucketName: s3a://source-bucket
+username: user123                                   <-- replace this with your assigned username
 ```
 
-#### 0.2 Notes on Naming Conventions
+### Notes on Virtual Cluster assignments
 
-Throughout the workshop you will be asked to name CDE objects such as Resources, Jobs and Connections. Make sure to **prefix these names with your unique username** provided to you by your Cloudera Workshop Lead.
+Each user is assigned to a Virtual Cluster (1:1) following the same naming convention as your username.
 
-These sections are marked with **⚠ Warning** in the instructions. Whenever you see naming examples in this document using **user123**, simply replace that with your username.
+```
+Username    Virtual Cluster
+---------------------------
+user001     virtual-cluster-001
+...         ...
+user025     virtual-cluster-025
+```
 
-#### 0.3 Notes on CDE Virtual Clusters
+## Lab 1. Manage Spark Jobs in the CDE UI
 
-You will be assigned to a specific CDE Virtual Cluster by your Cloudera Workshop Lead. Please make sure that you select your assigned Virtual Cluster whenever you are creating or browsing CDE Jobs and Resources.
+### Overview
 
-## Lab 1: Manage Spark Jobs with CDE
+In this section, you will create, configure and execute Spark Jobs manually via the CDE UI. You will manage application files and Python Virtual Environments with CDE Resources. CDE Resources can be of type "File", "Python", or "Custom Runtime". You will start by creating a File Resource to manage your application code (Spark and Airflow files) and dependencies. Then you will create a "Python Resource" to utilize custom Python libraries in a CDE Spark Job run. Finally, you will run the created jobs and validate the results.
 
-#### Summary
+You will work with the following Spark Jobs that create the target schema, load data into it and run data quality checks.
 
-In this section you will create, configure and execute Spark jobs manually via the CDE UI. You will manage application files and Python Virtual Environments with CDE Resources. CDE Resources can be of type "File", "Python", or "Custom Runtime". You will start by creating a File Resource to manage your application code (Spark and Airflow files) and dependencies. Then you will create a "Python Resource" to utilize custom Python libraries in a CDE Spark Job run.
+* **create.py**: Creates the target schema and iceberg tables
 
-To get started, navigate to the CDE Service from the CDP Home Page by clicking on the blue "Data Engineering" icon.
+```sql
+CREATE DATABASE car_data
+CREATE TABLE sales/customers ... USING ICEBERG
+```
 
-![alt text](img/cdp_lp_0.png)
+* **ingest.py**: Loads data in yearly batches; Appends sales data; Upserts customers data.
 
-#### 1.1 Creating File Resources
+```sql
+INSERT INTO car_data.sales ...
+MERGE INTO car_data.customers ...
+```
 
-To create a File Resource, from the CDE Home Page click on "Create New" in the "Resources" ->"File" section.
+* **validate.py**: Runs data quality checks on the loaded data.
 
-![alt text](img/cde_res_1.png)
+```python
+from great_expectations.dataset.sparkdf_dataset import SparkDFDataset
+sales_gdf.expect_compound_columns_to_be_unique(["customer_id", "VIN"])
+```
 
-Pick your assigned CDE Virtual Cluster and name your Resource after your username or a unique ID.
+### Create a File Resource for your Spark Jobs
 
->**⚠ Warning**
->Name your File Resource with your username assigned to you by your Cloudera Workshop Lead, e.g. "user123-cde-hol-files"
+To get started, navigate to the CDE Service from the CDP home page by clicking on the blue "Data Engineering" icon. From the CDE home page, create a new File resource. CDE Resources can be of type "File", "Python", or "Custom Runtime". You will start by creating a resource of type "File" to get started with your first Spark Jobs.
 
-Upload all files from the "./cde_spark_jobs" folder. Then, navigate back to the Resources tab and upload the "utils.py" file as well as the "parameters.conf" file contained in the "./resources_files" folder.
+1. First, navigate to the CDE Service from the CDP home page by clicking on the blue "Data Engineering" icon.
+2. To create a File Resource, from the CDE home page click on "Create New" in the "Resources" -> "File" section.
 
-When you are done, ensure that the following files are located in your File Resource:
+<img src="img/readme/cde_res_0.png" alt="image" width="800"/><br>
 
-![Alt text](img/cde_res_2.png)
+3. Name the File Resource e.g. "cde_hol_file_resource" (making sure your Virtual Cluster is selected.)
 
-#### 1.2 Creating Python Resources
+<img src="img/readme/cde_res_1.png" alt="image" width="300"/><br>
 
-In the next step you will create a Resource of type "Python". Python Resources allow you to manage Python Virtual Environments that you can use across different CDE Jobs.
+4. Upload the files listed below located in the "cde_spark_jobs" and "resources_files" folders.
 
-Navigate back to the CDE Home Page and click on "Create New" in the "Resources" -> "Python" section.
+```
+cde_spark_jobs
+├── create.py
+├── ingest.py
+└── validate.py
 
-Ensure to select the same CDE Virtual Cluster. Name the Python CDE Resource again after your unique user and leave the PyPI mirror field blank.
+resources_files
+└── parameters.conf
+```
 
->**⚠ Warning**
->Name your Python Resource with your username assigned to you by your Cloudera Workshop Lead, e.g. "user123-cde-hol-python"
+4. Make sure all the files listed above are located in your File Resource!
 
-![Alt text](img/cde_res_5.png)
+<img src="img/readme/cde_res_2.png" alt="image" width="1000"/><br>
 
-Upload the "requirements.txt" file provided in the "./resources_files" folder.
+### Create a Python Resource for the Data Quality Job
 
-![alt text](img/cde_res_6.png)
+Notice how the job "validate.py" imports the great-expectations library to utilize modules for data quality checks. For your PySpark Jobs to be able to make use of this dependency, you will create a new resource of type "Python Resource" in this section. This will build a Python Virtual Environment under the hood that any of your CDE Spark Jobs can utilize from there on.
 
-Notice the CDE Resource is now building the Python Virtual Environment. After a few moments the build will complete and you will be able to validate the libraries used.
+For more informaton on great-expectations also check out the docs: https://docs.greatexpectations.io/docs
 
-![alt text](img/cde_res_7.png)
+1. Navigate back to the CDE home page and click on "Create New" in the "Resources" -> "Python" section.
 
-![alt text](img/cde_res_8.png)
+<img src="img/readme/cde_res_3.png" alt="image" width="800"/><
+
+2. With your Virtual Cluster selected, name the Python CDE Resource, e.g. "cde_hol_python". Leave the PyPI mirror field blank.
+
+<img src="img/readme/cde_res_4.png" alt="image" width="300"/><br>
+
+3. Upload the "requirements.txt" file provided in the "./resources_files" folder.
+
+<img src="img/readme/cde_res_5.png" alt="image" width="800"/><br>
+
+4. Notice the CDE Resource is now building the Python Virtual Environment. After a few moments, the build will complete and you will be able to validate the libraries used. Validate that the "great-expectations" library was installed by searching for it.
+
+<img src="img/readme/cde_res_6.png" alt="image" width="800"/><br>
 
 To learn more about CDE Resources please visit [Using CDE Resources](https://docs.cloudera.com/data-engineering/cloud/use-resources/topics/cde-python-virtual-env.html) in the CDE Documentation.
 
-#### 1.3 Create and Run Your First CDE Spark Job
+### Create and Run Your First CDE Spark Jobs
 
-With the resources in place, we will create our first Spark Job based on the "01_Ingest.py" application file.
+With the resources in place, you will now create Spark Jobs based on your "create.py", "ingest.py" and "validate.py" File Resources. By decoupling Spark Jobs from application files, CDE allows you to fully manage, configure, schedule and monitor your Spark Jobs, rather than just running "spark-submit" commands (but of course you can still do that with CDE if you choose to).
 
->**⚠ Warning**
->Name your CDE Jobs with your username assigned to you by your Cloudera Workshop Lead, e.g. "user123-01_Ingest"
+First, you will create the jobs for "create.py":
 
-Navigate back to the CDE Home Page. Click on "Create New" in the "Jobs" -> "Spark" section.
+1. Navigate back to the CDE home page. Click on "Create New" in the "Jobs" -> "Spark" section.
 
-![alt text](img/cde_jobs_1.png)
+<img src="img/readme/cde_jobs_0.png" alt="image" width="600"/><br>
 
-Select your CDE Virtual Cluster and assign your unique Job Name with your username, e.g. "user123-01_Ingest". Scroll down; ensure to select "File" from the radio button and click on "Select from Resource" in the "Application File" section. A window will open with the contents loaded in your File Resource. Select script "01_Ingest.py".
+2. Name your job e.g. "create" and scroll down to select "File" from the radio button and click on "Select from Resource" in the "Application File" section.  A window will open with your File Resource where you select the "create.py" file.
 
-![Alt text](img/cde_jobs_2.png)
+<img src="img/readme/cde_jobs_1.png" alt="image" width="400"/><br>
 
-Scroll down again and toggle the "Advanced" section. Here, under the "Resources" section you can notice that your File Resource has been mapped to the Job by default. This allows the PySpark script to load files such as "parameters.conf" and simple Python modules such as the "utils.py" that you uploaded earlier.
+3. Scroll to the bottom and click on the "Create and Run" blue icon. The job will now be executed, which may take a few minutes.
 
-![alt text](img/cde_jobs_5.png)
+4. Repeat steps 1. through 3. for the "ingest" job.
 
-The scripts you are using in this workshop make use of these file resources like the "01_Ingest.py" shown below:
+5. Confirm both CDE Spark Jobs were created and executed successfully by browsing the "Job Runs" tab
+
+<img src="img/readme/cde_jobs_2.png" alt="image" width="1000"/><br>
+
+### A Note on File Resources and Spark Jobs in CDE
+
+FYI: Scroll down again and toggle the "Advanced" section. Here, under the "Resources" section you can notice that your File Resource has been mapped to the Job by default. This allows your Spark application to access files at runtime, such as the "parameters.conf" file you uploaded to your File Resource earlier. Your Spark application can then access the file e.g. as follows:
 
 ```python
-...
 config = configparser.ConfigParser()
 config.read("/app/mount/parameters.conf")
-s3BucketName=config.get("general","s3BucketName")
-username=config.get("general","username")
+USERNAME = config.get("general","username")
+```
+
+### Create and Run the "validate" Job with custom Python Dependencies
+
+You may have noticed in the Overview section that the "validate.py" script utilizes the "great-expectations" library that you created earlier in a Python Resource.
+
+1. To create the "validate" CDE Spark Job with this custom dependency, follow the same steps as above, but make sure you add the Python Environment config and select your Python Resource from earlier.
+
+<img src="img/readme/cde_jobs_3.png" alt="image" width="400"/><br>
+
+2. After "Create and Run", wait for job completion and verify that the job has finished successfully. **It turns out that the "validate" Job has failed!**
+
+<img src="img/readme/cde_jobs_4.png" alt="image" width="1000"/><br>
+
+### Check the Logs to Investigate the Failed "validate" Job
+
+1. From the "Job Runs" tab click on the failed Run ID of the "validate" Job to get an overview of the Job and specific Job Runs.
+2. To get to the logs of the failed job, navigate to "Logs" -> "stdout" and see if you can find what went wrong!
+
+<img src="img/readme/cde_jobs_5.png" alt="image" width="1000"/><br>
+
+3. Solution: It turns out our sales table contains duplicates for the "customer_id" and "VIN" fields. That's not good, as each customer should only be able to buy a single car once!
+
+```
+...
+AssertionError: VALIDATION FOR SALES TABLE UNSUCCESSFUL: FOUND DUPLICATES IN [customer_id, VIN].
 ...
 ```
 
-Scroll to the bottom and click on the "Create and Run" blue icon.
+**Infobox: Monitoring CDE Spark Jobs**
+> The Job Run is populated with Metadata, Logs, and the Spark UI. This information is persisted and can be referenced at a later point in time.
+> * The Configuration tab allows you to verify the script and resources used by the CDE Spark Job.
+> * The Logs tab contains rich logging information. For example, you can verify your code output under "Logs" -> "Driver" -> "stdout".
+> * The Spark UI allows you to visualize resources, optimize performance and troubleshoot your Spark Jobs.
 
-![alt text](img/cde_jobs_6.png)
+## Lab 2. Address Data Quality with Iceberg
 
-#### 1.4 Monitor Your First CDE Spark Job
+### Overview
 
-You will be automatically taken to the Jobs tab where the Job will now be listed at the top. Open the Job Runs tab on the left pane and validate that the CDE Spark Job is executing.
+To address the data quality findings, you will now take advantage of the table format powering the Cloudera Data Lakehouse: [Apache Iceberg](./GLOSSARY.md#apache-iceberg). Using Iceberg's time travel capabilities in a CDE Interactive Session, you will be addressing the data quality issues you have found in the previous lab.
 
-When complete, a green checkmark will appear on the left side. Click on the Job Run number to explore further.
+> **⚠** It turns out there are quality issues with your data. **⚠** <br>
+> Your data quality checks have found that the **sales** table contains duplicates. <br>
+> It is your job now to troubleshoot and revert the table back to a healthy state if possible. <br>
 
-![Alt text](img/cde_jobs_7.png)
+### Create an Interactive Session with Iceberg
 
-The Job Run is populated with Metadata, Logs, and the Spark UI. This information is persisted and can be referenced at a later point in time.
+1. From your CDE home page, navigate to the "Sessions" tab to create your session. Name the session e.g. "user123-session".
 
-- The Configuration tab allows you to verify the script and resources used by the CDE Spark Job.
-- The Logs tab contains rich logging information. For example, you can verify your code output under "Logs" -> "Driver" -> "stdout".
-- The Spark UI allows you to visualize resources, optimize performance and troubleshoot your Spark Jobs.
+<img src="img/readme/ice_0.png" alt="image" width="500"/><br>
 
-![Alt text](img/cde_jobs_8.png)
+2. Wait for the Session resources to be provisioned, then navigate to the "Interact" tab.
 
-#### 1.5 Additional Spark Jobs
+<img src="img/readme/ice_1.png" alt="image" width="600"/><br>
 
-Now that you have learned how to create Spark Jobs you can create the remaining Spark Jobs based on the application files "02_Sales_Transform_Iceberg.py", "03_Sales_Report.py" and "04_Motors_Enrich.py", as well as the previously created Python Resource. Create CDE Spark Jobs with the settings below leaving all other options to their default. Allow each job to complete before creating and executing a new one.
-
->**⚠ Warning**
->Always make sure to select the correct file resource starting with your username, e.g. "user123-cde-hol-files".
-
->**⚠ Warning**
->Name your CDE Jobs with your username assigned to you by your Cloudera Workshop Lead, e.g. "user123-02_Sales_Transform_Iceberg"
-
-Create the jobs with the following configurations:
-
-```
-Job Name: user123-02_Sales_Transform_Iceberg
-Type: Spark
-Application File: 02_Sales_Transform_Iceberg.py
-Resource(s): user123-cde-hol-files
-
-Job Name: user123-03_Sales_Report
-Type: Spark
-Python Environment: user123-cde-hol-python       <-- note this job runs functions from the utils.py module that rely on the custom Python Environment
-Application File: 03_Sales_Report.py
-Resource(s): user123-cde-hol-files
-
-Job Name: user123-04_Motors_Enrich
-Type: Spark
-Application File: 04_Motors_Enrich.py
-Resource(s): user123-cde-hol-files
-```
-
-Note that the ["03_Sales_Report.py"](./cde_spark_jobs/03_Sales_Report.py) script references the ["utils.py"](./resources_files/utils.py) module that we uploaded earlier to run data quality checks using the [quinn library](https://github.com/MrPowers/quinn) as shown below.
-
-```python
-import quinn
-...
-def test_column_presence(spark_df, col_list):
-    print("Testing for existence of Columns: ", [i for i in col_list])
-
-    try:
-        print(quinn.validate_presence_of_columns(spark_df, col_list))
-...
-```
-
-In order for Spark to use third-party Python libraries like we can leverage the Python Resource created earlier. Simply select your Python Resource when creating the Spark Job.
-
-![Alt text](img/cde_jobs_9.png)
-
-Verify that all jobs have executed successfully, then try to retrieve the logs from your Sales_Report job.
-
-Verify that the Data Quality checks have been successful and you are seeing the following report:
-
-```
-GROUP TOTAL SALES BY MODEL
-+-------+--------------------+
-|  Model|total_sales_by_model|
-+-------+--------------------+
-|Model C|        135844649.26|
-|Model D|        161544309.59|
-|Model R|        201184507.04|
-+-------+--------------------+
-
-GROUP TOTAL SALES BY GENDER
-+------+---------------------+
-|Gender|total_sales_by_gender|
-+------+---------------------+
-|     F|         257638222.62|
-|     M|         240935243.27|
-+------+---------------------+
-```
-
->**Note**
->The Iceberg Jars did not have to be loaded in the Spark Configurations. Iceberg is enabled at the Virtual Cluster level.
-
->**Note**
->Job 03_Sales_Report uses the Quinn Python library. The methods are implemented in utils.py which is loaded via the File Resource.   
-
-To learn more about Iceberg in CDE please visit [Using Apache Iceberg in Cloudera Data Engineering](https://docs.cloudera.com/data-engineering/cloud/manage-jobs/topics/cde-using-iceberg.html).
-
-To learn more about CDE Jobs please visit [Creating and Managing CDE Jobs](https://docs.cloudera.com/data-engineering/cloud/manage-jobs/topics/cde-create-job.html) in the CDE Documentation.
-
-## Lab 2: Orchestrate Data Pipelines with Airflow
-
-#### Summary
-
-You have now created and executed Spark Jobs manually. In this section, you will learn how to create Airflow jobs to schedule, orchestrate and monitor the execution of Spark Jobs on CDE.
-
-You will also learn about:
-- Navigating the Airflow UI
-- Code and No-Code approaches to defining Airflow Jobs
-- Airflow Key Concepts including DAGs, Operators, Connections
-
-#### Airflow Concepts
-
-You may have noticed that the jobs created in the previous section naturally come with dependencies. Some jobs such as 01_Ingest have to run before others can be started, Some other jobs such as 04_Motors_Enrich and 02_Sales_Transform_Iceberg are independent of each other. In data pipelines, these dependencies are typically expressed in the form of a DAG (Directed Acyclic Graph). Airflow leverages this concept and lets you define your DAGs as code in Python.
-
-On top of that, Airflow enables you to define important parameters such as schedule, retries, timeouts, Email notifications and much more at both DAG and individual task levels.
-
-For more information about Airflow DAGs, see Apache Airflow documentation [here](https://airflow.apache.org/docs/apache-airflow/stable/concepts/dags.html). For an example DAG in CDE, see CDE Airflow DAG documentation [here](https://docs.cloudera.com/data-engineering/cloud/orchestrate-workflows/topics/cde-airflow-editor.html).
-
-The Airflow UI makes it easy to monitor and troubleshoot your data pipelines. For a complete overview of the Airflow UI, see  Apache Airflow UI documentation [here](https://airflow.apache.org/docs/apache-airflow/stable/ui.html).
-
-#### 2.1 No-Code Approach to Defining Airflow Jobs
-
-You can use the CDE Airflow Editor to build DAGs without writing code. This is a great option if your DAG consists of a long sequence of CDE Spark or CDW Hive jobs. In this section you will create the following pipeline to orchestrate your previously created CDE Spark Jobs:
-
-```mermaid
-graph LR
-    direction TB
-    A(01_Ingest)
-    B(02_Sales_Transform_Iceberg)
-    C(03_Sales_Report)
-    D(04_Motors_Enrich)
-    A --> B
-    B --> C
-    B --> D
-```
-
-To create the pipeline, first navigate to the "Administration" tab. From  there, click on the "View Jobs" icon for your Virtual Cluster. A new Browser tab for your Virtual Cluster will open.
-
-![Alt text](img/airflow_editor_0.png)
-
-In this new view, create a new CDE Job of type "Airflow" as shown below. Ensure to select the "Editor" option. Then click create.
-
->**⚠ Warning**
->Name your CDE Airflow Jobs with your username assigned to you by your Cloudera Workshop Lead, e.g. "user123-Spark-DAG"
-
-![Alt text](img/airflow_editor_1.png)
-
-From the Editor Canvas drag and drop a CDE Job. Click on the icon on the canvas and an option window will appear on the right side. Enter the name of the CDE Job you want to schedule. For the first job, select the 01_Ingest job for your user. Repeat the process for the remaining CDE Jobs 04_Motors_Enrich, 02_Sales_Transform_Iceberg and 03_Sales_Report. To define the dependencies simply connect the CDE Jobs with your mouse.
-
->**Warning**
->Make sure to reference the correct CDE Spark Jobs starting with your username to avoid running jobs from other workshop participants. 
-
-![Alt text](img/airflow_editor_2.png)
-
-Next, for all of the CDE Jobs, open the configuration by clicking on the job on the canvas. Select "Depends on Past" and Trigger rule "all_success" for Jobs.
-
-When you are done don't forget to save the DAG before the next step.
-
-![Alt text](img/airflow_editor_4.png)
-
-Finally, you can navigate back to "Jobs" and trigger the DAG to run all CDE Jobs you defined previously and observe it from the CDE Job Runs UI.
-
-![Alt text](img/airflow_editor_5.png)
-
-Switch back to your CDE Browser tab and monitor the execution of both the DAG and the individual CDE Spark Jobs. You may close the Browser tab for your Virtual Cluster now.
-
-![Alt text](img/airflow_editor_6.png)
-
-After all jobs have finished successfully you can continue to the next section.
-
-#### 2.2 Airflow Connections
-
-Before creating the next Airflow Job, you will create an Airflow Connection that can be referenced in your DAGs.
-
->**Note**
->Airflow Connections are used for storing credentials and other information necessary for connecting to external services. This feature allows managing potentially sensitive data in an encrypted backend. If you want to learn more about the Airflow Connection feature used in this lab, visit [the official Airflow Documentation for managing Connections in the Airflow metadata database](https://airflow.apache.org/docs/apache-airflow/stable/howto/connection.html).
-
-To create your first Airflow Connection, navigate back to the CDE Administration tab, open your Virtual Cluster's "Cluster Details" and then click on the "Airflow" icon to reach the Airflow UI.
-
-![alt text](img/airflow_connection_0.png)
-
-![alt text](img/airflow_connection_1.png)
-
-Open Airflow Connections under the Admin dropdown as shown below.
-
-![alt text](img/airflow_connection_2.png)
-
-Airflow Connections allow you to predefine connection configurations so that they can be referenced within a DAG for various purposes. In our case, we will create a new connection to access the "Random Joke API" and in particular the "Programming" endpoint.
-
-![alt text](img/airflow_connection_3.png)
-
-Fill out the following fields as shown below and save.
-
->**⚠ Warning**
->Specify the Connection Id with your username assigned to you by your Cloudera Workshop Lead, e.g "user123_random_joke_connection"
-
-```
-Connection Id: user123_random_joke_connection
-Connection Type: HTTP
-Host: https://official-joke-api.appspot.com/
-```
-
-![alt text](img/airflow_connection_4.png)
-
-#### 2.3 Python Approach to defining Airlow Job
-
-Even though the CDE Airflow Editor is great for connecting multiple CDE & CDW Jobs, it only supports a limited number of Airflow features and Operators. Airflow's capabilities include a wide variety of operators, the ability to store temporary context values, connecting to 3rd party systems and overall the ability to implement more advanced orchestration use cases.
-
-Using the "Airflow-Code-DAG.py" you will create a new CDE Airflow Job to showcase some more advanced Airflow features such as using the Airflow Connection created previously and the SimpleHttpOperator to send/receive API requests.
-
-First, open the ["Airflow-Code-DAG.py"](./cde_airflow_jobs/Airflow-Code-Dag.py) and update your username as shown below:
-
->**⚠ Warning**
->Update the DAG with your username assigned to you by your Cloudera Workshop Lead, e.g "user123"
+3. As a first step, set your username variable for the commands to follow and verify that the shell is working as expected.
 
 ```python
 username = "user123"
-
-default_args = {
-    "owner": username,
-    ...
-}
+print(username)
 ```
 
-Next, try to familiarize yourself with the code. Some of the most notable aspects of this DAG include:
+### Verify the Data Quality Issues
 
-* The `SimpleHttpOperator` Operator is used to send a request to an API endpoint. This provides an optional integration point between CDE Airflow and 3rd Party systems or other Airflow services as requests and responses can be processed by the DAG. The `http_conn_id` is referencing the previously created Airflow Connection.
+With your Interactive Session running, you will now confirm the data quality issues in the sales table.
+
+> **Infobox: Time Travel with Iceberg**
+> * Recall the sales data is ingested in two batches, one for 2021, one for 2022.
+> * Iceberg creates a new snapshot with every write operation (inserts, updates, deletes).
+> * Note we're using the syntax `catalog.database.table.snapshots` to access the table history.
+
+1. Verify the duplicates by comparing total counts to distinct counts for the fields "customer_id" and "VIN".
 
 ```python
-api_call_1 = SimpleHttpOperator(
-    task_id="random_joke_api_1",
-    method="GET",
-    http_conn_id=f"{username}_random_joke_connection",
-    endpoint="/jokes/programming/random",
-    headers={"Content-Type":"application/json"},
-    response_check=lambda response: True if response.status_code == 200 else False,
-    dag=airflow_tour_dag,
-    do_xcom_push=True
-)
+sales_df = spark.sql(f"SELECT * FROM car_data_{username}.sales")
+count_total = sales_df.count()
+count_distinct = sales_df.select("customer_id", "VIN").distinct().count()
+print(f"Total count: {count_total} vs. unique [customer_id, VIN] count: {count_distinct}.")
 ```
 
-* Task Execution defined with the `>>` operator no longer follows a linear sequence. API response task only executes when both API call tasks have completed successfully.
+2. Check the table history by inspecting the Iceberg snapshots. You should see two snapshots in the sales table.
 
 ```python
-start >> [api_call_1, api_call_2] >> api_response
-```
-
-* Because we use `do_xcom_push=True` when instantiating the SimpleHttpOperators, the responses are written to a DAG context variable. Now the response is temporarily stored for the duration of the Airflow Job and can be reused by other operators. Finally, the Python Operator executes the "_print_random_joke" method and outputs the response of the API call.
-
-```python
-def _print_random_joke(**context):
-    return context["ti"].xcom_pull(task_ids=["random_joke_api_1", "random_joke_api_2"])
-
-api_response = PythonOperator(
-    task_id="print_random_joke",
-    python_callable=_print_random_joke,
-    dag=airflow_tour_dag
-)
-```
-
-Finally, upload the script to your CDE Files Resource. Create a new CDE Job of type Airflow with the name "user123-Airflow-Code-DAG" and select the script from your CDE Resource.
-
->**⚠ Warning**
->Name your Airflow Job with your username assigned to you by your Cloudera Workshop Lead, e.g "user123-Airflow-Code-DAG"
-
-Make sure to "Create" instead of "Create and Run" since this DAG is configured to run automatically.
-
-![Alt text](img/airflow_code_1.png)
-
-After the Airflow Job was created, navigate to the "Job Runs" tab and then to the logs of the "print_random_joke" task.
-
-![Alt text](img/airflow_code_2.png)
-
->**Note**
->The SimpleHttpOperator Operator can be used to interact with 3rd party systems and exchange data to and from a CDE Airflow Job run. For example you could trigger the execution of jobs outside CDP or execute CDE Airflow DAG logic based on inputs from 3rd party systems.
-
->**Note**  
->You can use CDE Airflow to orchestrate SQL queries in CDW, the Cloudera Data Warehouse Data Service, with the Cloudera-supported  CDWOperator. If you want to learn more, please go to [Using CDE Airflow with CDW](https://github.com/pdefusco/CDE119_ACE_WORKSHOP/blob/main/step_by_step_guides/english/part05_bonus_labs.md#bonus-lab-2-using-cde-airflow-with-cdw).
-
->**Note**  
->Additionally, other operators including Python, HTTP, and Bash are available in CDE. If you want to learn more about Airflow in CDE, please reference [Using CDE Airflow](https://github.com/pdefusco/Using_CDE_Airflow).
-
-To learn more about CDE Airflow please visit [Orchestrating Workflows and Pipelines](https://docs.cloudera.com/data-engineering/cloud/orchestrate-workflows/topics/cde-airflow-editor.html) in the CDE Documentation.
-
-## Lab 3: Explore Iceberg in Interactive Sessions
-
-#### Summary
-
-In this lab you will take advantage of the table format powering the Cloudera Data Lakehouse - Apache Iceberg. Using Iceberg's time travel capabilities in an CDE Interactive Session, you will be addressing the following data quality issues that have been reported to you by your business stakeholders.
-
->**⚠⚠⚠ Alert ⚠⚠⚠**:
-> It turns out there is a quality issue in your data!
-> 
-> Business users of the **CAR_SALES** table have complained that this table contains duplicates that corrupt the downstream reporting dashboard.
-> 
-> It is your job now to troubleshoot and revert the table back to a healthy state if possible.
-
-#### 3.1 Start an Interactive Session with Iceberg
-
-From your CDE home page, navigate to the "Sessions" tab. Create 
-
-![Alt text](img/ice-1.png)
-
-Wait for the Session resources to be provisioned, then navigate to the "Interact" tab.
-
-![Alt text](img/ice-2.png)
-
-As a first step, set your username variable for the commands to follow and verify that the shell is working as expected.
-
-```python
-username = "user123"
-```
-
-![Alt text](img/ice-3.png)
-
-#### 3.2 Confirm the Data Quality Issues
-
-With your Interactive Session in place, confirm the data quality issues that were reported to you by running the commands below:
-
-```python
-car_sales_df = spark.sql(f"SELECT * FROM {username}_CAR_DATA.CAR_SALES")
-count_total = car_sales_df.count()
-count_distinct = car_sales_df.distinct().count()
-print(f"There are {count_distinct} unique records out of {count_total} total records in the CAR_SALES table.")
-```
-
-Expected output:
-```
-There are 3336 unique records out of 5615 total records in the CAR_SALES table.
-```
-
-#### 3.3 Identify the correct Snapshot and Revert the Table
-
-In the first step you will explore the existing snapshots for the CAR_SALES that Iceberg creates with every write operation.
-
-```python
-spark.sql(f"SELECT * FROM spark_catalog.{username}_CAR_DATA.CAR_SALES.snapshots").show()
+spark.sql(f"SELECT * FROM spark_catalog.car_data_{username}.sales.snapshots").show()
 ```
 
 Expected output:
@@ -541,270 +284,352 @@ Expected output:
 +--------------------+-------------------+-------------------+---------+--------------------+--------------------+
 |        committed_at|        snapshot_id|          parent_id|operation|       manifest_list|             summary|
 +--------------------+-------------------+-------------------+---------+--------------------+--------------------+
-|2023-07-16 17:01:...|7747739539992707833|               null|   append|s3a://cde-hol-ws-...|{added-data-files...|
-|2023-07-16 17:02:...|3929517884528544887|7747739539992707833|   append|s3a://cde-hol-ws-...|{spark.app.id -> ...|
-|2023-07-16 17:02:...|2950758883762111157|3929517884528544887|   append|s3a://cde-hol-ws-...|{spark.app.id -> ...|
+|2023-12-09 00:01:...|7356121065394951566|               null|   append|s3a://cde-hol-buk...|{spark.app.id -> ...|
+|2023-12-09 00:01:...| 362831684775421239|7356121065394951566|   append|s3a://cde-hol-buk...|{spark.app.id -> ...|
 +--------------------+-------------------+-------------------+---------+--------------------+--------------------+
 ```
 
-Next, you will explore the summary in more detail, explaining in detail what was changed with each write operation.
+3. Check if the duplicates were introduced by a specific batch. It turns out that the second batch insert introduced the duplicates.
 
 ```python
-car_sales_summary_df = spark.sql(f"SELECT summary FROM spark_catalog.{username}_CAR_DATA.CAR_SALES.snapshots")
-summary = list(car_sales_summary_df.collect())
-for n, s in enumerate(summary):
-    print(f"Summary for snapshot number {n}: {s}\n")
+snapshot_ids = spark.sql(f"SELECT snapshot_id FROM spark_catalog.car_data_{username}.sales.snapshots").collect()
+for snapshot_id in snapshot_ids:
+    sales_df = spark.read.format("iceberg").option("snapshot-id", snapshot_id[0]).load(f"spark_catalog.car_data_{username}.sales")
+    count_total = sales_df.count()
+    count_distinct = sales_df.select("customer_id", "VIN").distinct().count()
+    print(f"Snapshot {snapshot_id} total count: {count_total} vs. unique [customer_id, VIN] count: {count_distinct}")
 ```
 
 Expected output:
+
 ```
-Summary for snapshot number 0: Row(summary={'changed-partition-count': '6', 'added-data-files': '6', 'total-equality-deletes': '0', 'added-records': '3336', 'total-position-deletes': '0', 'added-files-size': '91779', 'total-delete-files': '0', 'total-files-size': '91779', 'total-records': '3336', 'total-data-files': '6'})
-
-Summary for snapshot number 1: Row(summary={'spark.app.id': 'spark-4a99a736dc194def88d9263f580e0937', 'changed-partition-count': '6', 'added-data-files': '6', 'total-equality-deletes': '0', 'added-records': '991', 'total-position-deletes': '0', 'added-files-size': '37683', 'total-delete-files': '0', 'total-files-size': '129462', 'total-records': '4327', 'total-data-files': '12'})
-
-Summary for snapshot number 2: Row(summary={'spark.app.id': 'spark-4a99a736dc194def88d9263f580e0937', 'changed-partition-count': '6', 'added-data-files': '6', 'total-equality-deletes': '0', 'added-records': '1288', 'total-position-deletes': '0', 'added-files-size': '42071', 'total-delete-files': '0', 'total-files-size': '171533', 'total-records': '5615', 'total-data-files': '18'})
+Snapshot Row(snapshot_id=7356121065394951566) total count: 1874 vs. unique [customer_id, VIN] count: 1874
+Snapshot Row(snapshot_id=362831684775421239) total count: 6819 vs. unique [customer_id, VIN] count: 6667
 ```
 
-The summary will show that the first snapshot contains exactly the number of unique records you found previously. Validate that the first snapshot contains only unique records.
+### Options for Reverting the Table to an Uncorrupted State
+
+Thanks to Iceberg there are new and safer options to address this issue, depending on the business needs. Note that executing any of the below options is not required for the rest of the workshop to work as intended.
+
+* **Option A**: If having access to the latest batch is not critical, you can revert the table to the state before the second batch insert. This is done in Iceberg using the Spark rollback procedure:
 
 ```python
-first_snapshot = spark.sql(f"SELECT snapshot_id FROM spark_catalog.{username}_CAR_DATA.CAR_SALES.snapshots").first()[0]
-car_sales_df_clean = spark.read.format("iceberg").option("snapshot-id", first_snapshot).load(f"spark_catalog.{username}_CAR_DATA.CAR_SALES")
-assert car_sales_df_clean.count() == car_sales_df_clean.distinct().count(), "unique value counts validation failed"
-print("unique value counts validation successful")
+first_snapshot = spark.sql(f"SELECT snapshot_id FROM spark_catalog.car_data_{username}.sales.snapshots").first()[0]
+spark.sql(f"CALL spark_catalog.system.rollback_to_snapshot('car_data_{username}.sales', {first_snapshot})").show()
 ```
 
-Expected output:
-```
-unique value counts validation successful
-```
+This would result in:
 
-After this has been validated you can revert the table.
-
-```python
-spark.sql(f"CALL spark_catalog.system.rollback_to_snapshot('{username}_CAR_DATA.CAR_SALES', {first_snapshot})").show()
-```
-
-Expected output:
 ```
 +--------------------+-------------------+
 |previous_snapshot_id|current_snapshot_id|
 +--------------------+-------------------+
-| 2950758883762111157|7747739539992707833|
+|  362831684775421239|7356121065394951566|
 +--------------------+-------------------+
 ```
 
-Now the table can continue to be used by business stakeholders.
+* **Option B**: You can simply drop the duplicates using PySpark. Note that this will again create a new snapshot, so if this turns out to be the wrong approach you can always revert the table again.
 
 ```python
-car_sales_df = spark.sql(f"SELECT * FROM {username}_CAR_DATA.CAR_SALES")
-count_total = car_sales_df.count()
-count_distinct = car_sales_df.distinct().count()
-print(f"There are {count_distinct} unique records out of {count_total} total records in the CAR_SALES table.")
+sales_df_cleaned = sales_df.dropDuplicates(["customer_id", "VIN"])
+sales_df_cleaned.createOrReplaceTempView("sales_df_cleaned")
+spark.sql(f"INSERT OVERWRITE car_data_{username}.sales SELECT * FROM sales_df_cleaned")
 ```
 
-Expected output:
-```
-There are 3336 unique records out of 3336 total records in the CAR_SALES table.
-```
-
-## Lab 4: Automate CDE Workflows with the CDE CLI
-
-#### Summary
-
-The majority of CDE Production use cases rely on the CDE API and CLI. With them, you can easily interact with CDE from a local IDE and build integrations with external 3rd party systems. For example, you can implement multi-CDE cluster workflows with GitLabCI or Python.  
-
-In this part of the workshop you will gain familiarity with the CDE CLI by rerunning the same jobs and interacting with the service remotely.
-
-You can use the CDE CLI or API to execute Spark and Airflow jobs remotely rather than via the CDE UI as shown up to this point. In general, the CDE CLI is recommended over the UI when running spark submits from a local machine. The API is instead recommended when integrating CDE Spark Jobs or Airflow Jobs (or both) with 3rd party orchestration systems. For example you can use GitLab CI to build CDE Pipelines across multiple Virtual Clusters. For a detailed example, please reference [GitLab2CDE](https://github.com/pdefusco/Gitlab2CDE).
-
-#### 4.1 Install and Configure the CDE CLI
-
-You can download the CDE CLI to your local machine following the instructions provided in the [official documentation](https://docs.cloudera.com/data-engineering/cloud/cli-access/topics/cde-cli.html).
-
-1. Download the CDE CLI for your platform.
-
-![Alt text](img/cde_cli_0.png)
-
-2. Follow the [steps outlined in the documentation](https://docs.cloudera.com/data-engineering/cloud/cli-access/topics/cde-download-cli.html) to make it executable.
+Would result in a new snapshot. Note the **overwrite** snapshot as a result of the INSERT OVERWRITE statement:
 
 ```
-chmod +x /path/to/cde
++--------------------+-------------------+-------------------+---------+--------------------+--------------------+
+|        committed_at|        snapshot_id|          parent_id|operation|       manifest_list|             summary|
++--------------------+-------------------+-------------------+---------+--------------------+--------------------+
+|2023-12-09 10:42:...|2653522877398178198|               null|   append|s3a://cde-hol-buk...|{spark.app.id -> ...|
+|2023-12-09 10:42:...|2162976375477413462|2653522877398178198|   append|s3a://cde-hol-buk...|{spark.app.id -> ...|
+|2023-12-09 11:23:...|1434134148231443461|2162976375477413462|overwrite|s3a://cde-hol-buk...|{spark.app.id -> ...|
++--------------------+-------------------+-------------------+---------+--------------------+--------------------+
 ```
 
-3. Verify that you can execute the binary by running `./cde`.
+## Lab 3. Orchestrate Data Pipelines in Airflow
+
+### Overview
+
+You have already created and executed Spark Jobs manually via the CDE UI. In this section, you will learn how to create Airflow Jobs to schedule, orchestrate and monitor the execution of data pipelines consisting of multiple Spark Jobs on CDE. You will also implement **Option B** for addressing the quality issues by connecting to a CDW Virtual Warehouse.
+
+You will also learn about:
+- Navigating the Airflow UI
+- Code and No-Code approaches to defining Airflow Jobs
+- Airflow Key Concepts including DAGs, Operators, Connections
+
+### Create and Schedule an Airflow DAG with the Visual Editor
+
+You can use the CDE Airflow Editor to build DAGs without writing code. This is a great option if your DAG consists of a long sequence of CDE Spark or CDW Hive jobs. In this section, you will build a simple pipeline to orchestrate the CDE Spark Jobs you created before.
+
+1. From the CDE home page, click on "Build a Pipeline" under the "Airflow Pipelines" section. Name your pipeline e.g. "pipeline". After confirming with "Create" you are taken to the CDE Pipeline Editor.
+
+<img src="img/readme/cde_airflow_0.png" alt="image" width="600"/><br>
+
+2. To build your pipeline, simply drag and drop 3 CDE Spark Jobs onto the canvas and select the previously created "create", "ingest" and "validate" Spark Jobs.
+
+<img src="img/readme/cde_airflow_1.png" alt="image" width="1000"/><br>
+
+3. Within the Visual Editor, configure the Airflow Job with the specs below to schedule it to run daily. Enable "catch_up" to allow the pipeline once after you save it. Close the configuration window again (your configs are saved automatically).
 
 ```
-$ ./cde
+start_date: yesterday's date, e.g. 2023-12-11
+end_date: some date in the future, e.g. 2023-12-31
+schedule: @daily
+catch_up: true
+```
 
-Usage:
-  cde [command]
+<img src="img/readme/cde_airflow_4.png" alt="image" width="1000"/><br>
 
-Available Commands:
-  airflow     Airflow commands
-  backup      Create and Restore CDE backups
-  credential  Manage CDE credentials
-  help        Help about any command
-  job         Manage CDE jobs
-  profile     Manage CDE configuration profiles
-  resource    Manage CDE resources
-  run         Manage CDE runs
-  session     Manage CDE sessions
-  spark       Spark commands
+4. Save your pipeline (!) to finally deploy it. Navigate back to the "Jobs Run" tab. Your pipeline should run and trigger the Spark Jobs **sequentially**.
 
+### Navigate through the Airflow UI to Monitor your Pipeline
+
+Now that the Airflow Job is busy sequentially running your Spark Jobs, explore how you can navigate the Airflow UI to manage and monitor your jobs.
+
+1. From the "Jobs" tab, navigate to your newly created Airflow Job and click on "Airflow UI".
+
+<img src="img/readme/cde_airflow_2.png" alt="image" width="1000"/><br>
+
+2. In the Airflow UI, explore both the "Grid" (default) and the "Graph" view of your DAG. It should show the expected Jobs with 2 in "success" and 1 in "failed" status.
+
+<img src="img/readme/cde_airflow_3.png" alt="image" width="1000"/><br>
+
+> **Infobox: More complex Airflow Jobs and Python code**
+> * In the Airflow UI, navigate to the "Code" and inspect the code file that was automatically generated when you created the pipeline.
+> * As mentioned above, defining your pipeline using the (visual) Pipeline Editor is great for simple use cases, but you can always switch to defining your pipeline in Python code for more complex use cases.
+> * On top of that, Airflow offers hundreds of open-source modules for interacting with different systems!
+
+```python
 ...
-```
 
-4. Copy the "JOBS API URL" from your Virtual Cluster and save it somewhere so you can access it later.
-
-![Alt text](img/cde_cli_1.png)
-
-5. Set the CDP Workload Password for your user.
-
-![Alt text](img/cde_cli_2.png)
-
-![Alt text](img/cde_cli_3.png)
-
-6. Verify you can browse the previously created Resources on your Virtual Cluster. You will be prompted for your Workload Password.
-
-```bash
-$ ./cde job list --user <your-username> --vcluster-endpoint <your-jobs-api-url> --skip-credentials-file
-```
-
-Expected output:
-
-```
-API User Password: 
-[
-  {
-    "name": "user123-Airflow-Code-DAG",
-    "type": "airflow",
-    "created": "2023-07-16T17:47:28Z",
-    "modified": "2023-07-16T17:47:28Z",
-    "retentionPolicy": "keep_indefinitely",
-    "mounts": [
-      {
-        "resourceName": "user123-cde-hol-files"
-      }
-    ],
-    "airflow": {
-      "dagID": "user123-07-airflow-code-dag",
-      "dagFile": "Airflow-Code-Dag.py"
+dag = DAG(                      # <-- DAG configurations are defined here!
+    dag_id='mydag',
+    start_date=parser.isoparse('2023-12-07').replace(tzinfo=timezone.utc),
+    end_date=parser.isoparse('2023-12-13').replace(tzinfo=timezone.utc),
+    schedule_interval='@daily',
+    catchup=True,
+    is_paused_upon_creation=False,
+    default_args={
+        'owner': 'mengelhardt',
     },
-    "schedule": {
-      "enabled": true,
-      "user": "user001",
-      "cronExpression": "@daily",
-      "start": "2019-12-31T23:00:00.000000Z",
-      "nextExecution": "2023-07-16T22:00:00.000000Z"
-    }
-  },
-  ...
-```
+)
 
->**Note**
->There are many [other options to configuring the CLI client](https://docs.cloudera.com/data-engineering/cloud/cli-access/topics/cde-cli-config-options.html) that you may use in real use cases. This example just shows the minimal setup with password prompting.
-
->**Note**
->You may want to create an alias for your command to avoid having to specify endpoint and username repeatedly.
-
-```bash
-alias cde_user123 = "./cde --user <your-username> --vcluster-endpoint <your-jobs-api-url> --skip-credentials-file"
-```
-
-#### 4.2 Run an Application using the CDE CLI
-
-Similar to the well known `spark-submit` command, you may use the `cde spark submit` approach to directly running the "01_pyspark-sql.py" application.
-
-```bash
-$ ./cde spark submit ./cde_cli_jobs/01_pyspark-sql.py --user <your-username> --vcluster-endpoint <your-jobs-api-url> --skip-credentials-file
-```
-
-Expected output:
-
-```
-     3.0KB/3.0KB 100% [==============================================] 01_pyspark-sql.py
-Job run 35 submitted
-Waiting for job run 35 to start...  
-...
-
-root
- |-- name: string (nullable = true)
- |-- age: long (nullable = true)
-
-root
- |-- person_name: string (nullable = false)
- |-- person_age: integer (nullable = false)
+cde_job_1 = CDEJobRunOperator(  # <-- this defines a CDE Spark Job!
+    job_name='create',
+    task_id='cde_job_1',
+    dag=dag,
+)
 
 ...
 
-Waiting for job run 35 to terminate...  
-Job run 35 succeeded
+cde_job_2 << [cde_job_1]        # <-- dependencies between jobs are defined here!
+cde_job_3 << [cde_job_2]
 ```
 
-**Alternatively**, you can use the CDE CLI to manage your Spark applications similar to previous steps you have taken in the CDE UI during this workshop. The commands for that would be:
+### Add a CDWOperator to the Pipeline to Address Data Quality Issues
 
-1. Upload the application file to your file resource.
+Following the approach described in **Option B** in the previous section [Address Data Quality with Iceberg](#options-for-reverting-the-table-to-an-uncorrupted-state), you will leverage the CDWOperator to implement the "INSERT OVERWRITE" query directly from your Airflow Job.
 
-```
-$ ./cde resource upload --name user123-cde-hol-files --local-path ./cde_cli_jobs/01_pyspark-sql.py --user <your-username> --vcluster-endpoint <your-jobs-api-url> --skip-credentials-file
-```
+This additional step just before the "validate" job should allow the complete pipeline to finish successfully!
 
-Expected output:
-```
-3.0KB/3.0KB 100% [==============================================] 01_pyspark-sql.py
-```
+> **Infobox: Submit CDW queries from CDE Airflow Jobs**
+> * You can leverage CDE Airflow not only to orchestrate CDE internal Jobs, but any jobs running on CDP (and beyond).
+> * The pre-built Cloudera-supported Operators for CDE and CDW are also published here: https://github.com/cloudera/cloudera-airflow-plugins
 
-2. Create the cde job referencing the uploaded application file.
+0. Create a Workload Password for your CDP User.
 
-```
-./cde job create --name user123-cde-cli-job --type spark --application-file 01_pyspark-sql.py --mount-1-resource user123-cde-hol-files --user <your-username> --vcluster-endpoint <your-jobs-api-url> --skip-credentials-file
-```
+<img src="img/readme/cde_cli_0.png" alt="image" width="600"/><br>
+<img src="img/readme/cde_cli_1.png" alt="image" width="600"/><br>
 
-3. Run the cde job.
+1. Add an Airflow Connection to securely connect from CDE to a CDW Virtual Warehouse. From the CDE home page, click on the Virtual Cluster Details for your virtual cluster. From there, navigate to the Airflow UI.
 
-```
-$ ./cde job run --name user123-cde-cli-job --wait --user <your-username> --vcluster-endpoint <your-jobs-api-url> --skip-credentials-file
-```
+<img src="img/readme/cde_airflow_con_0.png" alt="image" width="700"/><br>
 
-Expected output:
+2. In the Airflow UI, navigate to the "Admin" -> "Connection" section. Click the plus sign to add a new Airflow Connection, and then fill in the fields:
+
+<img src="img/readme/cde_airflow_con_1.png" alt="image" width="800"/><br>
 
 ```
-Job run 36 submitted. Waiting...  
-Job run 36 succeeded
+Conn Id: Connection name, e.g. "cdw-virtual-warehouse".
+Conn Type: Select "Hive Client Wrapper".
+Host: hs2-cde-hol-hive-vw.dw-cde-hol-cdp-env.z20f-vg26.cloudera.site
+Login: <username>
+Password: <workload-password>
 ```
 
-4. Retrieve the metadata and logs for the run.
+3. After the Connection is created, navigate back to your Airflow Job and open the Editor. Add a CDW query by dragging it onto the canvas. Edit the query below with your username and paste it into the CDW query.
+
+```sql
+-- overwrite the sales table
+-- with unique records only
+INSERT OVERWRITE
+TABLE car_data_<username>.sales
+SELECT DISTINCT *
+FROM car_data_<username>.sales
+```
+
+<img src="img/readme/cde_airflow_7.png" alt="image" width="1000"/><br>
+
+4. Edit the dependencies between your jobs to make sure the jobs are executed in the following order:
+
+<img src="img/readme/cde_airflow_5.png" alt="image" width="1000"/><br>
+
+5. Save the pipeline to make the changes effective. Next, return to the "Jobs" tab and run the pipeline manually. After a while, you should see the pipeline has finished successfully this time!
+
+<img src="img/readme/cde_airflow_6.png" alt="image" width="500"/><br>
+
+## Lab 4. Automate Workflows with the CDE CLI
+
+### Overview
+
+You've seen how to manage both Spark and Airflow Jobs using the CDE UI, what's left to do? Leverage the CDE CLI to automate your workflows, e.g. to enable CI/CD.
+
+### Configure and run the CDE CLI using Docker (recommended)
+
+
+1. Retrieve your Virtual Jobs API URL.
+
+<img src="img/readme/cde_cli_2.png" alt="image" width="600"/><br>
+
+2. Update the file "cde_cli/config/config.yaml" with your Virtual Cluster JOBS API and your username.
 
 ```
-./cde run describe --id <your-run-id> --user <your-username> --vcluster-endpoint <your-jobs-api-url> --skip-credentials-file
-./cde run logs --id <your-run-id> --user <your-username> --vcluster-endpoint <your-jobs-api-url> --skip-credentials-file
+user: <username>
+vcluster-endpoint: <jobs-api-url>
+auth-pass-file: /home/cdeuser/.cde/creds.txt
 ```
 
-To learn about the difference between `cde spark submit` and cde job refer to the official documentation for [CDE concepts](https://docs.cloudera.com/data-engineering/cloud/cli-access/topics/cde-cli-concepts.html) and [Running a Spark job using the CLI](https://docs.cloudera.com/data-engineering/cloud/cli-access/topics/cde-cli-run-job.html) (excerpts below).
+3. Update the file "cde_cli/config/creds.txt" with the Workload password you set previously (you can always set a new one as well).
 
-> Submitting versus running a job
-> The cde spark submit and cde airflow submit commands automatically create a new job and a new resource, submit the job as a job run, and when the job run terminates they delete the job and resources.
-> 
-> A cde job run requires a job and all necessary resources to be created and uploaded to the CDE cluster beforehand. The advantage of creating resources and jobs ahead of time is that resources can be reused across jobs, and that jobs can be run using only a job name.
->
-> Using the cde job run requires more preparation on the target environment compared to the cde spark submit command. Whereas cde spark submit is a quick and efficient way of testing a Spark job during development, cde job run is suited for production environments where a job is to be run multiple times, therefore removing resources and job definitions after every job run is neither necessary, nor viable.
+```
+<workload-password>
+```
 
-## Bonus Lab 1: Visualize Job & Data Lineage in Atlas
+4. Run the CDE CLI without further setup. Note that the "cde_cli/config" directory is mounted from your host into the container.
 
-#### Summary
+```bash
+bash ./cde_cli/run.sh
+```
 
-Cloudera tracks and connects lineage for all CDP workloads and datasets via Apache Atlas. In this lab you are going to explore the metadata for our previously created jobs and datasets.
+Should give you a bash terminal in the CDE CLI container. Running the below should list all of your CDE Spark and Airflow Jobs!
 
-Navigate to the latest run of your "04_Motors_Enrich" Job and click on Lineage.
+```
+cdeuser@8c2b6432370d:~$ cde jobs list
+```
 
-![Alt text](img/atlas_0.png)
+### Alternatively: Set up the CDE CLI manually (not recommended)
 
-In Atlas, navigate to the "Lineage" tab.
+If you do not have Docker installed, you may download and set up the CDE CLI binary directly by following the instructions provided in the [official documentation](https://docs.cloudera.com/data-engineering/cloud/cli-access/topics/cde-cli.html). Note that the configuration steps may differ slightly from the Docker setup based on your environment.
 
-![Alt text](img/atlas_1.png)
+### Execute your Airflow Job from the CDE CLI
 
-The "04_Motors_Enrich" Job joined multiple tables together. Try to see if you can identify the raw data files and their respective AWS S3 buckets that were used to build this table.
+1. Run the Airflow Job from the CLI. Note that this will trigger the entire pipeline to run again. The response will be the Run ID for the Job Run.
+
+```bash
+cdeuser@4b2fb5fe2cc5:~$ cde job run --name mydag
+
+{
+  "id": 32
+}
+```
+
+2. Verify from the CDE and Airflow UIs that the pipeline is running as expected.
+
+> **Infobox: Leveraging the CDE CLI**
+> * The CDE CLI allows you to manage the full life cycle of your applications on CDE.
+> * For some examples, please refer to the [CDE CLI Demo](https://github.com/pdefusco/CDE_CLI_demo), a more advanced CDE CLI reference with additional details for the CDE user who wants to move beyond the basics.
+
+## Lab 5. Visualize the Results in Cloudera DataViz
+
+### Overview
+
+Cloudera Data Warehouse (CDW) Data Service is a containerized application for creating highly performant, independent, self-service data warehouses in the cloud which can be scaled dynamically and upgraded independently. Learn more about the service architecture, and how CDW enables data practitioners and IT administrators to achieve their goals.
+
+In this lab, we are going to take a look at the deployed CDW Virtual Warehouse, open DataViz and import a pre-built dashboard. Cloudera DataViz (CDV) is a powerful containerized Data Exploration and Visualization tool and we will explore some of the main capabilities.
+
+### Explore the Cloudera Data Warehouse (CDW) Data Service
+
+1. Go back to the Control Plane and select CDW
+
+<img src="img/readme/cdw_1.png" alt="image" width="800"/><br>
+
+2. On the CDW main Page observe the main Overview pane, you can see the deployed CDW Virtual Warehouses, you can see the Impala warehouse running with the actual load and the *Hue* application link to the specific warehouse. 
+
+<img src="img/readme/cdw_2.png" alt="image" width="800"/><br>
+
+On the left pane, you can select from the following: 
+- Database Catalogs: A Database Catalog is automatically created when you activate an environment in Cloudera Data Warehouse (CDW). You can add additional Database Catalogs if you want a standalone data warehouse that is not shared with other authorized users of the environment.
+- Virtual Warehouses: A Virtual Warehouse provides access to the data in tables and views in the data lake your Database Catalog uses. A Virtual Warehouse can access only the Database Catalog you select during the creation of the Virtual Warehouse. Define different types of Virtual Warehouses, you can choose Impala or Hive and select the scaling pattern and types of used resources.
+- Data Visualization: Access the DataViz application instances running in containers. 
+
+Whenever you run queries, e.g. via DataViz, Hue or any other application connecting to CDW via JDBC/ODBC, your Virtual Warehouse will scale according to the query and concurrency load.
+
+3. Look for your user and open the corresponding DataViz.
+
+<img src="img/readme/cdw_3.png" alt="image" width="800"/><br>
+
+### Build your First Visualization in DataViz
+
+In this part, you are going to create a connection to the Impala Virtual Warehouse and import a pre-built dashboard as DataViz visual artifact. You are then able to additionally create your own visualizations with the previously used and prepared datasets. 
+
+1. This is the main page of the CDV, you can see an overall number of queries, connections, dataset, dashboard and many more information. 
+
+<img src="img/readme/dataviz_1.png" alt="image" width="800"/><br>
+
+2. Now let's create a connection to the Impala Virtual Warehouse, click on the *Data* on the bar, and select *NEW CONNECTION* on the left pane. 
+
+<img src="img/readme/dataviz_2.png" alt="image" width="500"/><br>
+
+3. In this window, you have to specify the requested connection information to connect to the CDW Impala Virtual Warehouse.
+
+```json
+Connection type: CDW Impala
+Connection name: vhol
+CDW Warehouse: cde-hol-impala-vw
+```
+
+4. First, select *Test* and if successful select *Connect*. 
+
+<img src="img/readme/dataviz_3.png" alt="image" width="500"/><br>
+
+5. Now you have created a connection to the Virtual Warehouse and DataViz will use the underlying warehouse to run the queries for the data visualization. 
+
+6. Now we will import the visual artifact, which also sets up the references to our table which we would like to query. On the *Data* tab click on the three dots and select *Import visual artifacts*. 
+
+<img src="img/readme/dataviz_4.png" alt="image" width="600"/><br>
+
+7. Select the sales_dashboard.json to upload from the resource_files and select *Import*. 
+
+<img src="img/readme/dataviz_5.png" alt="image" width="500"/><br>
+
+8. On the next page you will see the objects and visuals that will be imported, just select *Accept and Import*. 
+
+<img src="img/readme/dataviz_6.png" alt="image" width="600"/><br>
+
+9. Let's open the imported visualization and go back to the DataViz main page. select the 2022 Sales Dashboard and observe it!
+
+<img src="img/readme/dataviz_7.png" alt="image" width="700"/><br>
+
+#### Create Your Own Visualization
+
+1. Click on *Edit* on the left top section of the opened 2022 Sales Dashboard Window
+
+<img src="img/readme/dataviz_8.png" alt="image" width="500"/><br>
+
+2. You will see that when you would like to add a new visual, DataViz asks you which Connection to use and what dataset you would like to use. In this case, select *vhol* as connection and *sales_customers* as the dataset. Then, click on *New Visual*.
+
+<img src="img/readme/dataviz_9.png" alt="image" width="500"/><br>
+
+3. Now on the right side, you will see the following:
+
+- Visuals: Select the visualization type. The necessary settings will show under the Visuals section. 
+- Dashboard Designer: You will see your available data as dimensions of measures, to set them please drag them to the necessary Dimensions or Measures shelf. In case of aggregation, just click on the items already on the shelves and the options will appear on the right side.
+
+<img src="img/readme/dataviz_10.png" alt="image" width="600"/><br>
+
+4. Now start to explore DataViz, create your first visualization! 
 
 # Next Steps
 
@@ -832,8 +657,8 @@ If you are exploring CDE you may find the following tutorials relevant:
 
 For more information on the Cloudera Data Platform and its form factors please visit [this site](https://docs.cloudera.com/).
 
-For more information on migrating Spark jobs to CDE, please reference [this guide](https://docs.cloudera.com/cdp-private-cloud-upgrade/latest/cdppvc-data-migration-spark/topics/cdp-migration-spark-cdp-cde.html).
+For more information on migrating Spark Jobs to CDE, please reference [this guide](https://docs.cloudera.com/cdp-private-cloud-upgrade/latest/cdppvc-data-migration-spark/topics/cdp-migration-spark-cdp-cde.html).
 
 If you have any questions about CML or would like to see a demo, please reach out to your Cloudera Account Team or send a message [through this portal](https://www.cloudera.com/contact-sales.html) and we will be in contact with you soon.
 
-![alt text](img/cde_thankyou.png)
+![alt text](img/readme/thankyou.png)

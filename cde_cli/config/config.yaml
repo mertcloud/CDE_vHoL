@@ -1,0 +1,3 @@
+user: <username>
+vcluster-endpoint: <jobs-api-url>
+auth-pass-file: /home/cdeuser/.cde/creds.txt
