@@ -26,7 +26,7 @@ assert sales_gdf_validation.success, \
 customers_gdf = SparkDFDataset(
     spark.sql(f"SELECT * FROM car_data_{USERNAME}.customers"))
 customers_gdf_validation = customers_gdf.expect_compound_columns_to_be_unique(
-    ["customer_id", "VIN"])
+    ["customer_id"])
 print(f"VALIDATION RESULTS FOR CUSTOMERS DATA:\n{customers_gdf_validation}\n")
 assert sales_gdf_validation.success, \
     "VALIDATION FOR CUSTOMERS TABLE UNSUCCESSFUL: FOUND DUPLICATES IN customer_id."

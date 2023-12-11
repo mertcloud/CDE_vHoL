@@ -85,9 +85,9 @@ user025     virtual-cluster-025
 
 ### Overview
 
-In this section, you will create, configure and execute Spark jobs manually via the CDE UI. You will manage application files and Python Virtual Environments with CDE Resources. CDE Resources can be of type "File", "Python", or "Custom Runtime". You will start by creating a File Resource to manage your application code (Spark and Airflow files) and dependencies. Then you will create a "Python Resource" to utilize custom Python libraries in a CDE Spark Job run. Finally, you will run the created jobs and validate the results.
+In this section, you will create, configure and execute Spark Jobs manually via the CDE UI. You will manage application files and Python Virtual Environments with CDE Resources. CDE Resources can be of type "File", "Python", or "Custom Runtime". You will start by creating a File Resource to manage your application code (Spark and Airflow files) and dependencies. Then you will create a "Python Resource" to utilize custom Python libraries in a CDE Spark Job run. Finally, you will run the created jobs and validate the results.
 
-You will work with the following Spark jobs that create the target schema, load data into it and run data quality checks.
+You will work with the following Spark Jobs that create the target schema, load data into it and run data quality checks.
 
 * **create.py**: Creates the target schema and iceberg tables
 
@@ -107,15 +107,15 @@ MERGE INTO car_data.customers ...
 
 ```python
 from great_expectations.dataset.sparkdf_dataset import SparkDFDataset
-assert customers_gdf.expect_column_to_exist("customer_id").success
+sales_gdf.expect_compound_columns_to_be_unique(["customer_id", "VIN"])
 ```
 
-### Create a File Resource for your Spark jobs
+### Create a File Resource for your Spark Jobs
 
-To get started, navigate to the CDE Service from the CDP Home Page by clicking on the blue "Data Engineering" icon. From the CDE Home page, create a new File resource. CDE Resources can be of type "File", "Python", or "Custom Runtime". You will start by creating a resource of type "File" to get started with your first Spark jobs.
+To get started, navigate to the CDE Service from the CDP home page by clicking on the blue "Data Engineering" icon. From the CDE home page, create a new File resource. CDE Resources can be of type "File", "Python", or "Custom Runtime". You will start by creating a resource of type "File" to get started with your first Spark Jobs.
 
-1. First, navigate to the CDE Service from the CDP Home Page by clicking on the blue "Data Engineering" icon.
-2. To create a File Resource, from the CDE Home Page click on "Create New" in the "Resources" -> "File" section.
+1. First, navigate to the CDE Service from the CDP home page by clicking on the blue "Data Engineering" icon.
+2. To create a File Resource, from the CDE home page click on "Create New" in the "Resources" -> "File" section.
 
 <img src="img/readme/cde_res_0.png" alt="image" width="800"/><br>
 
@@ -141,9 +141,9 @@ resources_files
 
 ### Create a Python Resource for the Data Quality Job
 
-Notice how the job "validate.py" imports the grea_expectations library to utilize modules for data quality checks. For your PySpark jobs to be able to make use of this dependency, you will create a new resource of type "Python Resource" in this section. This will build a Python Virtual Environment under the hood that any of your CDE Spark Jobs can utilize from there on.
+Notice how the job "validate.py" imports the grea_expectations library to utilize modules for data quality checks. For your PySpark Jobs to be able to make use of this dependency, you will create a new resource of type "Python Resource" in this section. This will build a Python Virtual Environment under the hood that any of your CDE Spark Jobs can utilize from there on.
 
-1. Navigate back to the CDE Home Page and click on "Create New" in the "Resources" -> "Python" section.
+1. Navigate back to the CDE home page and click on "Create New" in the "Resources" -> "Python" section.
 
 <img src="img/readme/cde_res_3.png" alt="image" width="800"/><
 
@@ -163,11 +163,11 @@ To learn more about CDE Resources please visit [Using CDE Resources](https://doc
 
 ### Create and Run Your First CDE Spark Jobs
 
-With the resources in place, you will now create Spark Jobs based on your "create.py", "ingest.py" and "validate.py" File Resources. By decoupling Spark Jobs from application files, CDE allows you to fully manage, configure, schedule and monitor your Spark jobs, rather than just running "spark-submit" commands (but of course you can still do that with CDE if you choose to).
+With the resources in place, you will now create Spark Jobs based on your "create.py", "ingest.py" and "validate.py" File Resources. By decoupling Spark Jobs from application files, CDE allows you to fully manage, configure, schedule and monitor your Spark Jobs, rather than just running "spark-submit" commands (but of course you can still do that with CDE if you choose to).
 
 First, you will create the jobs for "create.py":
 
-1. Navigate back to the CDE Home Page. Click on "Create New" in the "Jobs" -> "Spark" section.
+1. Navigate back to the CDE home page. Click on "Create New" in the "Jobs" -> "Spark" section.
 
 <img src="img/readme/cde_jobs_0.png" alt="image" width="600"/><br>
 
@@ -185,7 +185,7 @@ First, you will create the jobs for "create.py":
 
 ### A Note on File Resources and Spark Jobs in CDE
 
-FYI: Scroll down again and toggle the "Advanced" section. Here, under the "Resources" section you can notice that your File Resource has been mapped to the Job by default. This allows your Spark application to access files at runtime, such as the "parameters.conf" file you have uploaded to your File Resource earlier. Your Spark application can then access the file e.g. as follows:
+FYI: Scroll down again and toggle the "Advanced" section. Here, under the "Resources" section you can notice that your File Resource has been mapped to the Job by default. This allows your Spark application to access files at runtime, such as the "parameters.conf" file you uploaded to your File Resource earlier. Your Spark application can then access the file e.g. as follows:
 
 ```python
 config = configparser.ConfigParser()
@@ -305,12 +305,9 @@ Snapshot Row(snapshot_id=7356121065394951566) total count: 1874 vs. unique [cust
 Snapshot Row(snapshot_id=362831684775421239) total count: 6819 vs. unique [customer_id, VIN] count: 6667
 ```
 
-### Revert the Table to an Uncorrupted State
+### Options for Reverting the Table to an Uncorrupted State
 
-> **Note** <br>
-> For the remainder of the workshop, executing the below is optional and not required. You can ignore the duplicates for now, as we will re-run the full pipeline in the next section.
-
-Thanks to Iceberg there are new and safer options to address this issue, depending on the business needs.
+Thanks to Iceberg there are new and safer options to address this issue, depending on the business needs. Note that executing any of the below options is not required for the rest of the workshop to work as intended.
 
 * **Option A**: If having access to the latest batch is not critical, you can revert the table to the state before the second batch insert. This is done in Iceberg using the Spark rollback procedure:
 
@@ -319,7 +316,7 @@ first_snapshot = spark.sql(f"SELECT snapshot_id FROM spark_catalog.car_data_{use
 spark.sql(f"CALL spark_catalog.system.rollback_to_snapshot('car_data_{username}.sales', {first_snapshot})").show()
 ```
 
-Would result in:
+This would result in:
 
 ```
 +--------------------+-------------------+
@@ -353,7 +350,7 @@ Would result in a new snapshot. Note the **overwrite** snapshot as a result of t
 
 ### Overview
 
-You have already created and executed Spark Jobs manually via the CDE UI. In this section, you will learn how to create Airflow Jobs to schedule, orchestrate and monitor the execution of data pipelines consisting of multiple Spark Jobs on CDE.
+You have already created and executed Spark Jobs manually via the CDE UI. In this section, you will learn how to create Airflow Jobs to schedule, orchestrate and monitor the execution of data pipelines consisting of multiple Spark Jobs on CDE. You will also implement **Option B** for addressing the quality issues by connecting to a CDW Virtual Warehouse.
 
 You will also learn about:
 - Navigating the Airflow UI
@@ -362,11 +359,17 @@ You will also learn about:
 
 ### Create and Schedule an Airflow DAG with the Visual Editor
 
-You can use the CDE Airflow Editor to build DAGs without writing code. This is a great option if your DAG consists of a long sequence of CDE Spark or CDW Hive jobs. In this section you will build a simple pipeline to orchestrate the CDE Spark Jobs you created before.
+You can use the CDE Airflow Editor to build DAGs without writing code. This is a great option if your DAG consists of a long sequence of CDE Spark or CDW Hive jobs. In this section, you will build a simple pipeline to orchestrate the CDE Spark Jobs you created before.
 
-1. Create your Airflow Job from the home page, and name it e.g. "pipeline"
-2. Using the Visual Editor, chain together the 3 CDE Spark Jobs "create", "ingest" and "validate".
-3. Within the Visual Editor, configure the Airflow Job with the following:
+1. From the CDE home page, click on "Build a Pipeline" under the "Airflow Pipelines" section. Name your pipeline e.g. "pipeline". After confirming with "Create" you are taken to the CDE Pipeline Editor.
+
+<img src="img/readme/cde_airflow_0.png" alt="image" width="600"/><br>
+
+2. To build your pipeline, simply drag and drop 3 CDE Spark Jobs onto the canvas and select the previously created "create", "ingest" and "validate" Spark Jobs.
+
+<img src="img/readme/cde_airflow_1.png" alt="image" width="1000"/><br>
+
+3. Within the Visual Editor, configure the Airflow Job with the specs below to schedule it to run daily. Enable "catch_up" to allow the pipeline once after you save it. Close the configuration window again (your configs are saved automatically).
 
 ```
 start_date: yesterday's date, e.g. 2023-12-11
@@ -375,9 +378,15 @@ schedule: @daily
 catch_up: true
 ```
 
+<img src="img/readme/cde_airflow_4.png" alt="image" width="1000"/><br>
+
+4. Save your pipeline (!) to finally deploy it. Navigate back to the "Jobs Run" tab. Your pipeline should run and trigger the Spark Jobs **sequentially**.
+
 ### Navigate through the Airflow UI to Monitor your Pipeline
 
-1. From the "Jobs" tab, navigate to your Airflow Job and click on "Airflow UI".
+Now that the Airflow Job is busy sequentially running your Spark Jobs, explore how you can navigate the Airflow UI to manage and monitor your jobs.
+
+1. From the "Jobs" tab, navigate to your newly created Airflow Job and click on "Airflow UI".
 
 <img src="img/readme/cde_airflow_2.png" alt="image" width="1000"/><br>
 
@@ -385,16 +394,15 @@ catch_up: true
 
 <img src="img/readme/cde_airflow_3.png" alt="image" width="1000"/><br>
 
-3. In the Airflow UI, navigate to the "Code" and check the resulting code file, which should look similar to this:
+> **Infobox: More complex Airflow Jobs and Python code**
+> * In the Airflow UI, navigate to the "Code" and inspect the code file that was automatically generated when you created the pipeline.
+> * As mentioned above, defining your pipeline using the (visual) Pipeline Editor is great for simple use cases, but you can always switch to defining your pipeline in Python code for more complex use cases.
+> * On top of that, Airflow offers hundreds of open-source modules for interacting with different systems!
 
 ```python
-from airflow import DAG
-from airflow.utils import timezone
-from cloudera.cdp.airflow.operators.cde_operator import CDEJobRunOperator
-from datetime import timedelta
-from dateutil import parser
+...
 
-dag = DAG(
+dag = DAG(                      # <-- DAG configurations are defined here!
     dag_id='mydag',
     start_date=parser.isoparse('2023-12-07').replace(tzinfo=timezone.utc),
     end_date=parser.isoparse('2023-12-13').replace(tzinfo=timezone.utc),
@@ -406,42 +414,69 @@ dag = DAG(
     },
 )
 
-cde_job_1 = CDEJobRunOperator(
+cde_job_1 = CDEJobRunOperator(  # <-- this defines a CDE Spark Job!
     job_name='create',
     task_id='cde_job_1',
     dag=dag,
 )
 
-cde_job_2 = CDEJobRunOperator(
-    job_name='ingest',
-    task_id='cde_job_2',
-    dag=dag,
-)
+...
 
-cde_job_3 = CDEJobRunOperator(
-    job_name='validate',
-    task_id='cde_job_3',
-    dag=dag,
-)
-
-cde_job_2 << [cde_job_1]
+cde_job_2 << [cde_job_1]        # <-- dependencies between jobs are defined here!
 cde_job_3 << [cde_job_2]
 ```
 
-### Build a Materialized View with the CDWOperator
+### Add a CDWOperator to the Pipeline to Address Data Quality Issues
 
-- optional for advanced participants
+Following the approach described in **Option B** in the previous section [Address Data Quality with Iceberg](#options-for-reverting-the-table-to-an-uncorrupted-state), you will leverage the CDWOperator to implement the "INSERT OVERWRITE" query directly from your Airflow Job.
+
+This additional step just before the "validate" job should allow the complete pipeline to finish successfully!
+
+> **Infobox: Submit CDW queries from CDE Airflow Jobs**
+> * You can leverage CDE Airflow not only to orchestrate CDE internal Jobs, but any jobs running on CDP (and beyond).
+> * The pre-built Cloudera-supported Operators for CDE and CDW are also published here: https://github.com/cloudera/cloudera-airflow-plugins
+
+0. Create a Workload Password for your CDP User.
+
+<img src="img/readme/cde_cli_0.png" alt="image" width="600"/><br>
+<img src="img/readme/cde_cli_1.png" alt="image" width="600"/><br>
+
+1. Add an Airflow Connection to securely connect from CDE to a CDW Virtual Warehouse. From the CDE home page, click on the Virtual Cluster Details for your virtual cluster. From there, navigate to the Airflow UI.
+
+<img src="img/readme/cde_airflow_con_0.png" alt="image" width="700"/><br>
+
+2. In the Airflow UI, navigate to the "Admin" -> "Connection" section. Click the plus sign to add a new Airflow Connection, and then fill in the fields:
+
+<img src="img/readme/cde_airflow_con_1.png" alt="image" width="800"/><br>
 
 ```
-CREATE MATERIALIZED VEW sales_report_mv AS
-SELECT c.occupation, s.sales_price FROM car_data_user000.sales s
-JOIN car_data_{USERNAME}.customers c ON s.customer_id = c.customer_id
-GROUP BY c.occupation
-ORDER BY s.sales_price
+Conn Id: Connection name, e.g. "cdw-virtual-warehouse".
+Conn Type: Select "Hive Client Wrapper".
+Host: hs2-cde-hol-hive-vw.dw-cde-hol-cdp-env.z20f-vg26.cloudera.site
+Login: <username>
+Password: <workload-password>
 ```
 
-1. CDW Virtual Warehouse Connection
-2. Add CDWOperator
+3. After the Connection is created, navigate back to your Airflow Job and open the Editor. Add a CDW query by dragging it onto the canvas. Edit the query below with your username and paste it into the CDW query.
+
+```sql
+-- overwrite the sales table
+-- with unique records only
+INSERT OVERWRITE
+TABLE car_data_<username>.sales
+SELECT DISTINCT *
+FROM car_data_<username>.sales
+```
+
+<img src="img/readme/cde_airflow_7.png" alt="image" width="1000"/><br>
+
+4. Edit the dependencies between your jobs to make sure the jobs are executed in the following order:
+
+<img src="img/readme/cde_airflow_5.png" alt="image" width="1000"/><br>
+
+5. Save the pipeline to make the changes effective. Next, return to the "Jobs" tab and run the pipeline manually. After a while, you should see the pipeline has finished successfully this time!
+
+<img src="img/readme/cde_airflow_6.png" alt="image" width="500"/><br>
 
 ## Lab 4. Automate Workflows with the CDE CLI
 
@@ -451,57 +486,35 @@ You've seen how to manage both Spark and Airflow Jobs using the CDE UI, what's l
 
 ### Configure and run the CDE CLI using Docker (recommended)
 
-0. Create a Workload Password for your CDP User.
 
-<img src="img/readme/cde_cli_0.png" alt="image" width="600"/><br>
-<img src="img/readme/cde_cli_1.png" alt="image" width="600"/><br>
+1. Retrieve your Virtual Jobs API URL.
 
-1. Update the file "cde_cli/config/creds.txt" with your Workload password.
+<img src="img/readme/cde_cli_2.png" alt="image" width="600"/><br>
+
+2. Update the file "cde_cli/config/config.yaml" with your Virtual Cluster JOBS API and your username.
+
+```
+user: <username>
+vcluster-endpoint: <jobs-api-url>
+auth-pass-file: /home/cdeuser/.cde/creds.txt
+```
+
+3. Update the file "cde_cli/config/creds.txt" with the Workload password you set previously (you can always set a new one as well).
 
 ```
 <workload-password>
 ```
 
-2. Retrieve your Virtual Jobs API URL.
-
-<img src="img/readme/cde_cli_2.png" alt="image" width="600"/><br>
-
-3. Update the file "cde_cli/config/env.cfg" with your Virtual Cluster JOBS API and your username.
-
-```
-CDE_USER=<username>
-CDE_VCLUSTER_ENDPOINT=<jobs-api-url>
-CDE_AUTH_PASS_FILE=/home/cdeuser/config/creds.txt
-```
-
-3. Run the CDE CLI without further setup. Note that the "cde_cli/config" directory is mounted from your host into the container.
+4. Run the CDE CLI without further setup. Note that the "cde_cli/config" directory is mounted from your host into the container.
 
 ```bash
 bash ./cde_cli/run.sh
 ```
 
-Should give you a bash terminal in the CDE CLI container.
+Should give you a bash terminal in the CDE CLI container. Running the below should list all of your CDE Spark and Airflow Jobs!
 
 ```
-cdeuser@8c2b6432370d:~$ cde
-
-Usage:
-  cde [command]
-
-Available Commands:
-  airflow     Airflow commands
-  backup      Create and Restore CDE backups
-  credential  Manage CDE credentials
-  help        Help about any command
-  job         Manage CDE jobs
-  profile     Manage CDE configuration profiles
-  resource    Manage CDE resources
-  run         Manage CDE runs
-  session     Manage CDE sessions
-  spark       Spark commands
-
-...
-
+cdeuser@8c2b6432370d:~$ cde jobs list
 ```
 
 ### Alternatively: Set up the CDE CLI manually (not recommended)
@@ -642,7 +655,7 @@ If you are exploring CDE you may find the following tutorials relevant:
 
 For more information on the Cloudera Data Platform and its form factors please visit [this site](https://docs.cloudera.com/).
 
-For more information on migrating Spark jobs to CDE, please reference [this guide](https://docs.cloudera.com/cdp-private-cloud-upgrade/latest/cdppvc-data-migration-spark/topics/cdp-migration-spark-cdp-cde.html).
+For more information on migrating Spark Jobs to CDE, please reference [this guide](https://docs.cloudera.com/cdp-private-cloud-upgrade/latest/cdppvc-data-migration-spark/topics/cdp-migration-spark-cdp-cde.html).
 
 If you have any questions about CML or would like to see a demo, please reach out to your Cloudera Account Team or send a message [through this portal](https://www.cloudera.com/contact-sales.html) and we will be in contact with you soon.
 
