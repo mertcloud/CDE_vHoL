@@ -488,8 +488,7 @@ You've seen how to manage both Spark and Airflow Jobs using the CDE UI, what's l
 
 ### Configure and run the CDE CLI using Docker (recommended)
 
-
-1. Retrieve your Virtual Jobs API URL.
+1. Retrieve your Virtual Jobs API URL by clicking on the "Cluster Details" icon of your Virtual Cluster.
 
 <img src="img/readme/cde_cli_2.png" alt="image" width="600"/><br>
 
@@ -516,7 +515,7 @@ bash ./cde_cli/run.sh
 Should give you a bash terminal in the CDE CLI container. Running the below should list all of your CDE Spark and Airflow Jobs!
 
 ```
-cdeuser@8c2b6432370d:~$ cde jobs list
+cdeuser@8c2b6432370d:~$ cde job list
 ```
 
 ### Alternatively: Set up the CDE CLI manually (not recommended)
@@ -528,7 +527,7 @@ If you do not have Docker installed, you may download and set up the CDE CLI bin
 1. Run the Airflow Job from the CLI. Note that this will trigger the entire pipeline to run again. The response will be the Run ID for the Job Run.
 
 ```bash
-cdeuser@4b2fb5fe2cc5:~$ cde job run --name mydag
+cdeuser@4b2fb5fe2cc5:~$ cde job run --name "pipeline"
 
 {
   "id": 32
