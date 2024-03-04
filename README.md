@@ -497,7 +497,7 @@ You've seen how to manage both Spark and Airflow Jobs using the CDE UI, what's l
 ```
 user: <username>
 vcluster-endpoint: <jobs-api-url>
-auth-pass-file: /home/cdeuser/.cde/creds.txt
+auth-pass-file: /home/cdeuser/.cde/creds.txt  <-- leave this as configured
 ```
 
 3. Update the file "cde_cli/config/creds.txt" with the Workload password you set previously (you can always set a new one as well).
