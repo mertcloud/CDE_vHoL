@@ -1,15 +1,10 @@
 from pyspark.sql import SparkSession
-import configparser
 
 
 # create spark session
 spark = SparkSession.builder.appName("CREATE").getOrCreate()
 
-# parse job configuration
-config = configparser.ConfigParser()
-config.read("/app/mount/parameters.conf")
-S3_BUCKET = config.get("general", "s3BucketName")
-USERNAME = config.get("general", "username")
+USERNAME = spark._sc.sparkUser()
 print(f"RUNNING AS USERNAME: {USERNAME}")
 
 # database cleanup and create

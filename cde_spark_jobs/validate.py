@@ -1,17 +1,12 @@
 from pyspark.sql import SparkSession
-import configparser
-
 from great_expectations.dataset.sparkdf_dataset import SparkDFDataset
 
-# parse job configuration
-config = configparser.ConfigParser()
-config.read("/app/mount/parameters.conf")
-s3BucketName = config.get("general", "s3BucketName")
-USERNAME = config.get("general", "username")
-print(f"RUNNING AS USERNAME: {USERNAME}")
 
 # create spark session
 spark = SparkSession.builder.appName("VALIDATE").getOrCreate()
+
+USERNAME = spark._sc.sparkUser()
+print(f"RUNNING AS USERNAME: {USERNAME}")
 
 # validate the data quality of the sales data with great-expectations
 sales_gdf = SparkDFDataset(

@@ -5,12 +5,13 @@ import configparser
 # create spark session
 spark = SparkSession.builder.appName("INGEST").getOrCreate()
 
+USERNAME = spark._sc.sparkUser()
+print(f"RUNNING AS USERNAME: {USERNAME}")
+
 # parse job configuration
 config = configparser.ConfigParser()
-config.read("/app/mount/parameters.conf")
-USERNAME = config.get("general", "username")
+config.read("/app/mount/resources_files/parameters.conf")
 S3_BUCKET = config.get("general", "s3BucketName")
-print(f"RUNNING AS USERNAME: {USERNAME}")
 print(f"LOADING DATA FROM S3 BUCKET: {S3_BUCKET}\n")
 
 for YEAR in ["2021", "2022"]:
