@@ -48,28 +48,17 @@ $ aws s3 ls s3://<source-bucket>/ --recursive --human-readable
 
 ## Lab 0. Setup
 
-### Clone this repo to the machine you will be using for the workshop.
+### Set up the Repository on CDE
 
-```
-mkdir cde-hol
-cd cde-hol
-git clone https://github.com/cloudera-cemea/CDE_vHoL.git
-cd CDE_vHoL
-```
+From the CDE home page, navigate to Repositories > Create Repository.
 
-Alternatively, if you don't have git installed on your machine, you can also manually download the files from https://github.com/cloudera-cemea/CDE_vHoL.
+    Repository Name: <username>-repository
+    URL: https://github.com/cloudera-cemea/CDE_vHoL
+    Branch: main
+    Credential: Leave blank
+    TLS: Leave unchecked
 
-### Update the username in the parameters.conf file
-
-Before you start the labs, open the "parameters.conf" file in the "resources_files" folder and edit the username as assigned by your Cloudera Workshop Lead.
-
-```
-[general]
-s3BucketName: s3a://source-bucket
-username: user123                                   <-- replace this with your assigned username
-```
-
-### Notes on Virtual Cluster assignments
+### Notes on Virtual Clusters
 
 Each user is assigned to a Virtual Cluster (1:1) following the same naming convention as your username.
 
@@ -192,7 +181,7 @@ FYI: Scroll down again and toggle the "Advanced" section. Here, under the "Resou
 ```python
 config = configparser.ConfigParser()
 config.read("/app/mount/resources_files/parameters.conf")
-USERNAME = config.get("general","username")
+S3_BUCKET = config.get("general", "s3BucketName")
 ```
 
 ### Create and Run the "validate" Job with custom Python Dependencies
@@ -251,8 +240,8 @@ To address the data quality findings, you will now take advantage of the table f
 3. As a first step, set your username variable for the commands to follow and verify that the shell is working as expected.
 
 ```python
-username = "user123"
-print(username)
+USERNAME = spark._sc.sparkUser()
+print(USERNAME)
 ```
 
 ### Verify the Data Quality Issues
