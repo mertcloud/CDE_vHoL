@@ -2,7 +2,7 @@
 
 ## Cloudera Data Engineering
 
-Cloudera Data Engineering (CDE) is a managed, containerized Platform-as-a-Service for the Cloudera Data Platform designed for managing large-scale data pipelines based around Spark, Airflow and Iceberg. It allows you to submit batch jobs to auto-scaling virtual clusters with built-in multi-tenancy support. As a serverless service, CDE enables you to spend more time on your applications, and less time on infrastructure.
+Cloudera Data Engineering (CDE) is a managed, containerized Platform-as-a-Service for the Cloudera Data Platform designed for managing large-scale data pipelines based around Spark, Airflow and Iceberg. It allows you to submit batch jobs to auto-scaling virtual clusters with built-in multi-tenancy support. CDE enables you to spend more time on your applications, and less time on infrastructure, while staying in control of scale and cost.
 
 This hands-on lab is designed to walk you through the CDE's main capabilities. Throughout the exercises, you will:
 
@@ -10,7 +10,6 @@ This hands-on lab is designed to walk you through the CDE's main capabilities. T
 2. [**Validate** Data Quality with Iceberg](#lab-2-address-data-quality-with-iceberg)
 3. [**Orchestrate** Data Pipelines in Airflow](#lab-3-orchestrate-data-pipelines-in-airflow)
 4. [**Automate** Workflows with the CDE CLI](#lab-4-automate-workflows-with-the-cde-cli)
-5. [**Visualize** the Results in Cloudera DataViz](#lab-5-visualize-the-results-in-cloudera-dataviz)
 
 ### Glossary
 
@@ -20,20 +19,18 @@ For an overview of terminology specific to CDE (e.g. Virtual Cluster, Interactiv
 
 <img src="img/readme/use_case_0.svg" alt="image" width="800"/>
 
-**Business Context:**
+**Overview**
 
-* You are a Data Engineer working for an electric vehicle startup.
-* You were tasked to build a reliable data pipeline for sales reporting.
-* You are to create a simple star schema with **sales** (facts) and **customers** (dimension).
-
-**Requirements:**
-
-* You will use CDE to deploy and orchestrate data pipelines for loading and validating the data.
-* The source data is loaded in yearly batches from an S3 bucket.<br>
-* The **sales** (fact) table is to be **appended**.
-* The **customers** (dimension) table is to be **updated**.
+* You learn how to use CDE to create, deploy and orchestrate data pipelines
+* You create a simple star schema with **sales** (facts) and **customers** (dimension).
+* You load data into the schema and run basic data quality checks
+* You discover automation features e.g. for CI/CD use cases
 
 **Source data on S3:**
+
+* The source data is loaded in yearly batches from an S3 bucket.
+* The **sales** (fact) table is to be **appended**.
+* The **customers** (dimension) table is to be **updated**.
 
 ```bash
 $ aws s3 ls s3://<source-bucket>/ --recursive --human-readable
@@ -48,102 +45,92 @@ $ aws s3 ls s3://<source-bucket>/ --recursive --human-readable
 
 ## Lab 0. Setup
 
-### Clone this repo to the machine you will be using for the workshop.
-
-```
-mkdir cde-hol
-cd cde-hol
-git clone https://github.com/cloudera-cemea/CDE_vHoL.git
-cd CDE_vHoL
-```
-
-Alternatively, if you don't have git installed on your machine, you can also manually download the files from https://github.com/cloudera-cemea/CDE_vHoL.
-
-### Update the username in the parameters.conf file
-
-Before you start the labs, open the "parameters.conf" file in the "resources_files" folder and edit the username as assigned by your Cloudera Workshop Lead.
-
-```
-[general]
-s3BucketName: s3a://source-bucket
-username: user123                                   <-- replace this with your assigned username
-```
-
-### Notes on Virtual Cluster assignments
+### Notes on Virtual Clusters
 
 Each user is assigned to a Virtual Cluster (1:1) following the same naming convention as your username.
 
-```
-Username    Virtual Cluster
----------------------------
-user001     virtual-cluster-001
-...         ...
-user025     virtual-cluster-025
-```
+    Username    Virtual Cluster
+    ---------------------------
+    user001     virtual-cluster-001
+    ...         ...
+    user025     virtual-cluster-025
 
 ## Lab 1. Manage Spark Jobs in the CDE UI
 
 ### Overview
 
-In this section, you will create, configure and execute Spark Jobs manually via the CDE UI. You will manage application files and Python Virtual Environments with CDE Resources. CDE Resources can be of type "File", "Python", or "Custom Runtime". You will start by creating a File Resource to manage your application code (Spark and Airflow files) and dependencies. Then you will create a "Python Resource" to utilize custom Python libraries in a CDE Spark Job run. Finally, you will run the created jobs and validate the results.
+In this section, you will create, configure and execute Spark Jobs manually via the CDE UI. You will learn how to use application files hosted on GitHub and create Python Virtual Environments. Finally, you will create and run CDE Spark Jobs and validate the results.
 
 You will work with the following Spark Jobs that create the target schema, load data into it and run data quality checks.
 
-* **create.py**: Creates the target schema and iceberg tables
+* [**create.py**](https://github.com/cloudera-cemea/CDE_vHoL/blob/main/cde_spark_jobs/create.py): Creates the target schema and iceberg tables
 
 ```sql
 CREATE DATABASE car_data
 CREATE TABLE sales/customers ... USING ICEBERG
 ```
 
-* **ingest.py**: Loads data in yearly batches; Appends sales data; Upserts customers data.
+* [**ingest.py**](https://github.com/cloudera-cemea/CDE_vHoL/blob/main/cde_spark_jobs/ingest.py): Loads data in yearly batches; Appends sales data; Upserts customers data.
 
 ```sql
 INSERT INTO car_data.sales ...
 MERGE INTO car_data.customers ...
 ```
 
-* **validate.py**: Runs data quality checks on the loaded data.
+* [**validate.py**](https://github.com/cloudera-cemea/CDE_vHoL/blob/main/cde_spark_jobs/validate.py): Runs data quality checks on the loaded data.
 
 ```python
 from great_expectations.dataset.sparkdf_dataset import SparkDFDataset
 sales_gdf.expect_compound_columns_to_be_unique(["customer_id", "VIN"])
 ```
 
-### Create a File Resource for your Spark Jobs
+### Set up the Repository on CDE
 
-CDE Resources can be of type "File", "Python", or "Custom Runtime". You will start by creating a resource of type "File" to get started with your first Spark Jobs.
+From the CDE home page, navigate to Repositories > Create Repository.
 
-1. First, navigate to the CDE Service from the CDP home page by clicking on the blue "Data Engineering" icon.
-2. To create a File Resource, from the CDE home page click on "Create New" in the "Resources" -> "File" section.
+    Repository Name: <username>-repository
+    URL: https://github.com/cloudera-cemea/CDE_vHoL
+    Branch: main
+    Credential: Leave blank
+    TLS: Leave unchecked
 
-<img src="img/readme/cde_res_0.png" alt="image" width="800"/><br>
+### Create and Run Your First CDE Spark Jobs
 
-3. Name the File Resource e.g. "cde_hol_file_resource" (making sure your Virtual Cluster is selected.)
+With the repository set up, you will now create Spark Jobs based on your "create.py" and "ingest.py" scripts. By decoupling Spark Jobs from application files, CDE allows you to fully manage, configure, schedule and monitor your Spark Jobs, rather than just running "spark-submit" commands (but of course you can still do that with CDE if you choose to).
 
-<img src="img/readme/cde_res_1.png" alt="image" width="300"/><br>
+First, you will create the jobs for "**create.py**":
 
-4. Upload the files listed below located in the "cde_spark_jobs" and "resources_files" folders.
+1. Navigate back to the CDE home page. Click on "Create New" in the "Jobs" -> "Spark" section.
 
+<img src="img/readme/cde_jobs_0.png" alt="image" width="600"/><br>
+
+2. Name your job e.g. "create" and select "Repository" as the "Application File" and choose the corresponding script.
+
+<img src="img/readme/cde_jobs_1.png" alt="image" width="400"/><br>
+
+3. Scroll to the bottom and click on the "Create and Run" blue icon. The job will now be executed, which may take a minute.
+
+4. Confirm your "create" CDE Spark Job was created and executed successfully by browsing the "Job Runs" tab
+
+5. Repeat steps 1. through 4. for the "**ingest.py**" script. Both Jobs should have finished successfully!
+
+<img src="img/readme/cde_jobs_2.png" alt="image" width="1000"/><br>
+
+### A Note on mounting File Resources to Spark Jobs in CDE
+
+FYI: Scroll down again and toggle the "Advanced" section. Here, under the "Resources" section you can notice that your Repository has been mapped to the Job by default. This allows your Spark application to access all files from the repository at runtime, such as the "resources_files/parameters.conf" file. Your Spark application can then access the file e.g. as shown in the ingest.py script:
+
+```python
+config = configparser.ConfigParser()
+config.read("/app/mount/resources_files/parameters.conf")
+S3_BUCKET = config.get("general", "s3BucketName")
 ```
-cde_spark_jobs
-├── create.py
-├── ingest.py
-└── validate.py
 
-resources_files
-└── parameters.conf
-```
+### Create a Python Virtual Environment for the Data Quality Job
 
-4. Make sure all the files listed above are located in your File Resource!
+Notice how the job "**validate.py**" imports the great-expectations library to utilize modules for data quality checks. For your PySpark Jobs to be able to make use of third-party Python dependencies, you will create a new resource of type "Python Resource" in this section. This will build a Python Virtual Environment under the hood that any of your CDE Spark Jobs can utilize from there on.
 
-<img src="img/readme/cde_res_2.png" alt="image" width="1000"/><br>
-
-### Create a Python Resource for the Data Quality Job
-
-Notice how the job "validate.py" imports the great-expectations library to utilize modules for data quality checks. For your PySpark Jobs to be able to make use of this dependency, you will create a new resource of type "Python Resource" in this section. This will build a Python Virtual Environment under the hood that any of your CDE Spark Jobs can utilize from there on.
-
-For more informaton on great-expectations also check out the docs: https://docs.greatexpectations.io/docs
+For more information on great-expectations also check out the docs: https://docs.greatexpectations.io/docs
 
 1. Navigate back to the CDE home page and click on "Create New" in the "Resources" -> "Python" section.
 
@@ -153,7 +140,7 @@ For more informaton on great-expectations also check out the docs: https://docs.
 
 <img src="img/readme/cde_res_4.png" alt="image" width="300"/><br>
 
-3. Upload the "requirements.txt" file provided in the "./resources_files" folder.
+3. Upload the "requirements.txt" file. If you haven't cloned this repository, you must first download the file from this URL https://github.com/cloudera-cemea/CDE_vHoL/blob/main/resources_files/requirements.txt to your machine.
 
 <img src="img/readme/cde_res_5.png" alt="image" width="800"/><br>
 
@@ -163,43 +150,10 @@ For more informaton on great-expectations also check out the docs: https://docs.
 
 To learn more about CDE Resources please visit [Using CDE Resources](https://docs.cloudera.com/data-engineering/cloud/use-resources/topics/cde-python-virtual-env.html) in the CDE Documentation.
 
-### Create and Run Your First CDE Spark Jobs
 
-With the resources in place, you will now create Spark Jobs based on your "create.py", "ingest.py" and "validate.py" File Resources. By decoupling Spark Jobs from application files, CDE allows you to fully manage, configure, schedule and monitor your Spark Jobs, rather than just running "spark-submit" commands (but of course you can still do that with CDE if you choose to).
+### Create and Run the "validate" Job with the created Python Virtual Environment
 
-First, you will create the jobs for "create.py":
-
-1. Navigate back to the CDE home page. Click on "Create New" in the "Jobs" -> "Spark" section.
-
-<img src="img/readme/cde_jobs_0.png" alt="image" width="600"/><br>
-
-2. Name your job e.g. "create" and scroll down to select "File" from the radio button and click on "Select from Resource" in the "Application File" section.  A window will open with your File Resource where you select the "create.py" file.
-
-<img src="img/readme/cde_jobs_1.png" alt="image" width="400"/><br>
-
-3. Scroll to the bottom and click on the "Create and Run" blue icon. The job will now be executed, which may take a minute.
-
-4. Confirm your "create" CDE Spark Job was created and executed successfully by browsing the "Job Runs" tab
-
-5. Repeat steps 1. through 4. for the "ingest" job. Both Jobs should have finished successfully!
-
-<img src="img/readme/cde_jobs_2.png" alt="image" width="1000"/><br>
-
-### A Note on File Resources and Spark Jobs in CDE
-
-FYI: Scroll down again and toggle the "Advanced" section. Here, under the "Resources" section you can notice that your File Resource has been mapped to the Job by default. This allows your Spark application to access files at runtime, such as the "parameters.conf" file you uploaded to your File Resource earlier. Your Spark application can then access the file e.g. as follows:
-
-```python
-config = configparser.ConfigParser()
-config.read("/app/mount/parameters.conf")
-USERNAME = config.get("general","username")
-```
-
-### Create and Run the "validate" Job with custom Python Dependencies
-
-You may have noticed in the Overview section that the "validate.py" script utilizes the "great-expectations" library that you created earlier in a Python Resource.
-
-1. To create the "validate" CDE Spark Job with this custom dependency, follow the same steps as above, but make sure you add the Python Environment config and select your Python Resource from earlier.
+1. To create the "validate" CDE Spark Job with the Python Virtual Environment, follow the same steps as above, but make sure you add the Python Environment config and select your Python Resource from earlier.
 
 <img src="img/readme/cde_jobs_3.png" alt="image" width="400"/><br>
 
@@ -251,8 +205,8 @@ To address the data quality findings, you will now take advantage of the table f
 3. As a first step, set your username variable for the commands to follow and verify that the shell is working as expected.
 
 ```python
-username = "user123"
-print(username)
+USERNAME = spark._sc.sparkUser()
+print(USERNAME)
 ```
 
 ### Verify the Data Quality Issues
@@ -374,8 +328,8 @@ You can use the CDE Airflow Editor to build DAGs without writing code. This is a
 3. Within the Visual Editor, configure the Airflow Job with the specs below to schedule it to run daily. Enable "catch_up" to allow the pipeline once after you save it. Close the configuration window again (your configs are saved automatically).
 
 ```
-start_date: yesterday's date, e.g. 2023-12-11
-end_date: some date in the future, e.g. 2023-12-31
+start_date: yesterday's date, e.g. 2024-06-12
+end_date: some date in the future, e.g. 2024-06-30
 schedule: @daily
 catch_up: true
 ```
@@ -454,7 +408,7 @@ This additional step just before the "validate" job should allow the complete pi
 ```
 Conn Id: Connection name, e.g. "cdw-virtual-warehouse".
 Conn Type: Select "Hive Client Wrapper".
-Host: hs2-cde-hol-hive-vw.dw-cde-hol-cdp-env.z20f-vg26.cloudera.site
+Host: hs2-cde-hol-vw.dw-cde-hol-dtag-cdp-env.yu1t-vbzg.cloudera.site
 Login: <username>
 Password: <workload-password>
 ```
@@ -539,96 +493,6 @@ cdeuser@4b2fb5fe2cc5:~$ cde job run --name "pipeline"
 > **Infobox: Leveraging the CDE CLI**
 > * The CDE CLI allows you to manage the full life cycle of your applications on CDE.
 > * For some examples, please refer to the [CDE CLI Demo](https://github.com/pdefusco/CDE_CLI_demo), a more advanced CDE CLI reference with additional details for the CDE user who wants to move beyond the basics.
-
-## Lab 5. Visualize the Results in Cloudera DataViz
-
-### Overview
-
-Cloudera Data Warehouse (CDW) Data Service is a containerized application for creating highly performant, independent, self-service data warehouses in the cloud which can be scaled dynamically and upgraded independently. Learn more about the service architecture, and how CDW enables data practitioners and IT administrators to achieve their goals.
-
-In this lab, we are going to take a look at the deployed CDW Virtual Warehouse, open DataViz and import a pre-built dashboard. Cloudera DataViz (CDV) is a powerful containerized Data Exploration and Visualization tool and we will explore some of the main capabilities.
-
-### Explore the Cloudera Data Warehouse (CDW) Data Service
-
-1. Go back to the Control Plane and select CDW
-
-<img src="img/readme/cdw_1.png" alt="image" width="800"/><br>
-
-2. On the CDW main Page observe the main Overview pane, you can see the deployed CDW Virtual Warehouses, you can see the Impala warehouse running with the actual load and the *Hue* application link to the specific warehouse. 
-
-<img src="img/readme/cdw_2.png" alt="image" width="800"/><br>
-
-On the left pane, you can select from the following: 
-- Database Catalogs: A Database Catalog is automatically created when you activate an environment in Cloudera Data Warehouse (CDW). You can add additional Database Catalogs if you want a standalone data warehouse that is not shared with other authorized users of the environment.
-- Virtual Warehouses: A Virtual Warehouse provides access to the data in tables and views in the data lake your Database Catalog uses. A Virtual Warehouse can access only the Database Catalog you select during the creation of the Virtual Warehouse. Define different types of Virtual Warehouses, you can choose Impala or Hive and select the scaling pattern and types of used resources.
-- Data Visualization: Access the DataViz application instances running in containers. 
-
-Whenever you run queries, e.g. via DataViz, Hue or any other application connecting to CDW via JDBC/ODBC, your Virtual Warehouse will scale according to the query and concurrency load.
-
-3. Look for your user and open the corresponding DataViz.
-
-<img src="img/readme/cdw_3.png" alt="image" width="800"/><br>
-
-### Build your First Visualization in DataViz
-
-In this part, you are going to create a connection to the Impala Virtual Warehouse and import a pre-built dashboard as DataViz visual artifact. You are then able to additionally create your own visualizations with the previously used and prepared datasets. 
-
-1. This is the main page of the CDV, you can see an overall number of queries, connections, dataset, dashboard and many more information. 
-
-<img src="img/readme/dataviz_1.png" alt="image" width="800"/><br>
-
-2. Now let's create a connection to the Impala Virtual Warehouse, click on the *Data* on the bar, and select *NEW CONNECTION* on the left pane. 
-
-<img src="img/readme/dataviz_2.png" alt="image" width="500"/><br>
-
-3. In this window, you have to specify the requested connection information to connect to the CDW Impala Virtual Warehouse.
-
-```json
-Connection type: CDW Impala
-Connection name: vhol
-CDW Warehouse: cde-hol-impala-vw
-```
-
-4. First, select *Test* and if successful select *Connect*. 
-
-<img src="img/readme/dataviz_3.png" alt="image" width="500"/><br>
-
-5. Now you have created a connection to the Virtual Warehouse and DataViz will use the underlying warehouse to run the queries for the data visualization. 
-
-6. Now we will import the visual artifact, which also sets up the references to our table which we would like to query. On the *Data* tab click on the three dots and select *Import visual artifacts*. 
-
-<img src="img/readme/dataviz_4.png" alt="image" width="600"/><br>
-
-7. Select the sales_dashboard.json to upload from the resource_files and select *Import*. 
-
-<img src="img/readme/dataviz_5.png" alt="image" width="500"/><br>
-
-8. On the next page you will see the objects and visuals that will be imported, just select *Accept and Import*. 
-
-<img src="img/readme/dataviz_6.png" alt="image" width="600"/><br>
-
-9. Let's open the imported visualization and go back to the DataViz main page. select the 2022 Sales Dashboard and observe it!
-
-<img src="img/readme/dataviz_7.png" alt="image" width="700"/><br>
-
-#### Create Your Own Visualization
-
-1. Click on *Edit* on the left top section of the opened 2022 Sales Dashboard Window
-
-<img src="img/readme/dataviz_8.png" alt="image" width="500"/><br>
-
-2. You will see that when you would like to add a new visual, DataViz asks you which Connection to use and what dataset you would like to use. In this case, select *vhol* as connection and *sales_customers* as the dataset. Then, click on *New Visual*.
-
-<img src="img/readme/dataviz_9.png" alt="image" width="500"/><br>
-
-3. Now on the right side, you will see the following:
-
-- Visuals: Select the visualization type. The necessary settings will show under the Visuals section. 
-- Dashboard Designer: You will see your available data as dimensions of measures, to set them please drag them to the necessary Dimensions or Measures shelf. In case of aggregation, just click on the items already on the shelves and the options will appear on the right side.
-
-<img src="img/readme/dataviz_10.png" alt="image" width="600"/><br>
-
-4. Now start to explore DataViz, create your first visualization! 
 
 # Next Steps
 
