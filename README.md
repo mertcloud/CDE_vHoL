@@ -41,11 +41,7 @@ $ aws s3 ls s3://<source-bucket>/ --recursive --human-readable
 2023-12-05 14:50:55  276.0 KiB 2022/sales.csv
 ```
 
-# Step by Step Instructions
-
-## Lab 0. Setup
-
-### Notes on Virtual Clusters
+**Notes on Virtual Clusters**
 
 Each user is assigned to a Virtual Cluster (1:1) following the same naming convention as your username.
 
@@ -54,6 +50,8 @@ Each user is assigned to a Virtual Cluster (1:1) following the same naming conve
     user001     virtual-cluster-001
     ...         ...
     user025     virtual-cluster-025
+
+# Step by Step Instructions
 
 ## Lab 1. Manage Spark Jobs in the CDE UI
 
