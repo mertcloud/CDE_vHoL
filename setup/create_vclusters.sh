@@ -3,10 +3,9 @@
 set -e
 cd "$(dirname "$0")"
 
-# create cde infra
-N_VCLUSTERS=30
-CLUSTER_ID="cluster-rjxhnmwp"
-CDP_PROFILE="marketing-workshop-1"
+N_VCLUSTERS=<number-participants>
+CLUSTER_ID="<cde-cluster-id>"
+CDP_PROFILE="<cdp-cli-profile>"
 
 for i in $(seq 1 $N_VCLUSTERS)
 do
