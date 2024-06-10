@@ -328,8 +328,8 @@ You can use the CDE Airflow Editor to build DAGs without writing code. This is a
 3. Within the Visual Editor, configure the Airflow Job with the specs below to schedule it to run daily. Enable "catch_up" to allow the pipeline once after you save it. Close the configuration window again (your configs are saved automatically).
 
 ```
-start_date: yesterday's date, e.g. 2023-12-11
-end_date: some date in the future, e.g. 2023-12-31
+start_date: yesterday's date, e.g. 2024-06-12
+end_date: some date in the future, e.g. 2024-06-30
 schedule: @daily
 catch_up: true
 ```
