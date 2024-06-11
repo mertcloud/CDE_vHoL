@@ -82,6 +82,30 @@ from great_expectations.dataset.sparkdf_dataset import SparkDFDataset
 sales_gdf.expect_compound_columns_to_be_unique(["customer_id", "VIN"])
 ```
 
+### Create a Python Virtual Environment for the Data Quality Job
+
+Notice how the job "**validate.py**" imports the great-expectations library to utilize modules for data quality checks. For your PySpark Jobs to be able to make use of third-party Python dependencies, you will create a new resource of type "Python Resource" in this section. This will build a Python Virtual Environment under the hood that any of your CDE Spark Jobs can utilize from there on.
+
+For more information on great-expectations also check out the docs: https://docs.greatexpectations.io/docs
+
+1. Navigate back to the CDE home page and click on "Create New" in the "Resources" -> "Python" section.
+
+<img src="img/readme/cde_res_3.png" alt="image" width="800"/><
+
+2. With your Virtual Cluster selected, name the Python CDE Resource, e.g. "cde_hol_python". Leave the PyPI mirror field blank.
+
+<img src="img/readme/cde_res_4.png" alt="image" width="300"/><br>
+
+3. Upload the "requirements.txt" file. If you haven't cloned this repository, you must first download the file from this URL https://github.com/cloudera-cemea/CDE_vHoL/blob/main/resources_files/requirements.txt to your machine.
+
+<img src="img/readme/cde_res_5.png" alt="image" width="800"/><br>
+
+4. Notice the CDE Resource is now building the Python Virtual Environment. After a few moments, the build will complete and you will be able to validate the libraries used. Validate that the "great-expectations" library was installed by searching for it.
+
+<img src="img/readme/cde_res_6.png" alt="image" width="800"/><br>
+
+To learn more about CDE Resources please visit [Using CDE Resources](https://docs.cloudera.com/data-engineering/cloud/use-resources/topics/cde-python-virtual-env.html) in the CDE Documentation.
+
 ### Set up the Repository on CDE
 
 From the CDE home page, navigate to Repositories > Create Repository.
@@ -123,31 +147,6 @@ config = configparser.ConfigParser()
 config.read("/app/mount/resources_files/parameters.conf")
 S3_BUCKET = config.get("general", "s3BucketName")
 ```
-
-### Create a Python Virtual Environment for the Data Quality Job
-
-Notice how the job "**validate.py**" imports the great-expectations library to utilize modules for data quality checks. For your PySpark Jobs to be able to make use of third-party Python dependencies, you will create a new resource of type "Python Resource" in this section. This will build a Python Virtual Environment under the hood that any of your CDE Spark Jobs can utilize from there on.
-
-For more information on great-expectations also check out the docs: https://docs.greatexpectations.io/docs
-
-1. Navigate back to the CDE home page and click on "Create New" in the "Resources" -> "Python" section.
-
-<img src="img/readme/cde_res_3.png" alt="image" width="800"/><
-
-2. With your Virtual Cluster selected, name the Python CDE Resource, e.g. "cde_hol_python". Leave the PyPI mirror field blank.
-
-<img src="img/readme/cde_res_4.png" alt="image" width="300"/><br>
-
-3. Upload the "requirements.txt" file. If you haven't cloned this repository, you must first download the file from this URL https://github.com/cloudera-cemea/CDE_vHoL/blob/main/resources_files/requirements.txt to your machine.
-
-<img src="img/readme/cde_res_5.png" alt="image" width="800"/><br>
-
-4. Notice the CDE Resource is now building the Python Virtual Environment. After a few moments, the build will complete and you will be able to validate the libraries used. Validate that the "great-expectations" library was installed by searching for it.
-
-<img src="img/readme/cde_res_6.png" alt="image" width="800"/><br>
-
-To learn more about CDE Resources please visit [Using CDE Resources](https://docs.cloudera.com/data-engineering/cloud/use-resources/topics/cde-python-virtual-env.html) in the CDE Documentation.
-
 
 ### Create and Run the "validate" Job with the created Python Virtual Environment
 
