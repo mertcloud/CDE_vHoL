@@ -202,8 +202,8 @@ To address the data quality findings, you will now take advantage of the table f
 3. As a first step, set your username variable for the commands to follow and verify that the shell is working as expected.
 
 ```python
-USERNAME = spark._sc.sparkUser()
-print(USERNAME)
+username = spark._sc.sparkUser()
+print(username)
 ```
 
 ### Verify the Data Quality Issues
