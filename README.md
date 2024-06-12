@@ -100,7 +100,7 @@ For more information on great-expectations also check out the docs: https://docs
 
 <img src="img/readme/cde_res_5.png" alt="image" width="800"/><br>
 
-4. Notice the CDE Resource is now building the Python Virtual Environment. After a few moments, the build will complete and you will be able to validate the libraries used. Validate that the "great-expectations" library was installed by searching for it.
+4. Notice the CDE Resource is now building the Python Virtual Environment. After a few minutes, the build will complete and you will be able to validate the libraries used. Validate that the "great-expectations" library was installed by searching for it.
 
 <img src="img/readme/cde_res_6.png" alt="image" width="800"/><br>
 
