@@ -88,13 +88,9 @@ Notice how the job "**validate.py**" imports the great-expectations library to u
 
 For more information on great-expectations also check out the docs: https://docs.greatexpectations.io/docs
 
-1. Navigate back to the CDE home page and click on "Create New" in the "Resources" -> "Python" section.
-
-<img src="img/readme/cde_res_3.png" alt="image" width="800"/><
+1. From the CDE home page, navigate to the Resources tab and create a new Resource of tpe "Python".
 
 2. With your Virtual Cluster selected, name the Python CDE Resource, e.g. "cde_hol_python". Leave the PyPI mirror field blank.
-
-<img src="img/readme/cde_res_4.png" alt="image" width="300"/><br>
 
 3. Upload the "requirements.txt" file. If you haven't cloned this repository, you must first download the file from this URL https://github.com/cloudera-cemea/CDE_vHoL/blob/main/resources_files/requirements.txt to your machine.
 
