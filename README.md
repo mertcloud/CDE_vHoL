@@ -318,7 +318,7 @@ You can use the CDE Airflow Editor to build DAGs without writing code. This is a
 
 <img src="img/readme/cde_airflow_0.png" alt="image" width="600"/><br>
 
-2. To build your pipeline, simply drag and drop 3 CDE Spark Jobs onto the canvas and select the previously created "create", "ingest" and "validate" Spark Jobs.
+2. To build your pipeline, simply drag and drop 3 CDE Spark Jobs onto the canvas and select the previously created "create", "ingest" and "validate" Spark Jobs. If you need to delete connections between steps, use the DEL key.
 
 <img src="img/readme/cde_airflow_1.png" alt="image" width="1000"/><br>
 
@@ -348,7 +348,7 @@ Now that the Airflow Job is busy sequentially running your Spark Jobs, explore h
 <img src="img/readme/cde_airflow_3.png" alt="image" width="1000"/><br>
 
 > **Infobox: More complex Airflow Jobs and Python code**
-> * In the Airflow UI, navigate to the "Code" and inspect the code file that was automatically generated when you created the pipeline.
+> * In order to view the Python code created by the visual editor, navigate to the Airflow UI by going to Administration > Virtual Cluster Details > Airflow UI. From there, you can navigate to the "Code" and inspect the code file that was automatically generated when you created the pipeline.
 > * As mentioned above, defining your pipeline using the (visual) Pipeline Editor is great for simple use cases, but you can always switch to defining your pipeline in Python code for more complex use cases.
 > * On top of that, Airflow offers hundreds of open-source modules for interacting with different systems!
 
@@ -439,9 +439,7 @@ You've seen how to manage both Spark and Airflow Jobs using the CDE UI, what's l
 
 ### Configure and run the CDE CLI using Docker (recommended)
 
-1. Retrieve your Virtual Jobs API URL by clicking on the "Cluster Details" icon of your Virtual Cluster.
-
-<img src="img/readme/cde_cli_2.png" alt="image" width="600"/><br>
+1. Retrieve your Virtual Jobs API URL by navigating to your Virtual Cluster Details > Actions > Copy Jobs API URL.
 
 2. Update the file "cde_cli/config/config.yaml" with your Virtual Cluster JOBS API and your username.
 
