@@ -401,7 +401,7 @@ This additional step just before the "validate" job should allow the complete pi
 ```
 Conn Id: Connection name, e.g. "cdw-virtual-warehouse".
 Conn Type: Select "Hive Client Wrapper".
-Host: hs2-cde-hol-vw.dw-cde-hol-dtag-cdp-env.yu1t-vbzg.cloudera.site
+Host: hs2-cde-hol-vw.dw-cde-hol-cdp-env.z20f-vg26.cloudera.site
 Login: <username>
 Password: <workload-password>
 ```
